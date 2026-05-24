@@ -1,65 +1,59 @@
-# Hệ Thống Đặt Sân Bóng Đá (Frontend)
-Ứng dụng Flutter cho phép người dùng đặt sân bóng đá, quản lý sân và trải nghiệm dịch vụ thuê sân bóng trực tuyến dễ dàng, kết nối với backend Spring Boot.
+# Football Booking Frontend - Ứng Dụng Đặt Sân Bóng Đá
 
-Link backend: [Backend](https://github.com/vinhdangtapcode/FootballBooking)
+Frontend của hệ thống đặt sân bóng đá được xây dựng bằng Flutter, cung cấp trải nghiệm đa nền tảng (Android, iOS, Web) mượt mà cho người dùng và chủ sân.
 
-## Tính Năng
-- Đăng ký và đăng nhập người dùng (tích hợp với backend qua JWT)
-- Với người dùng (Người đặt sân):
-  + Đặt sân bóng đá
-  + Tìm kiếm sân
-  + Thêm sân yêu thích
-  + Xem lịch sử đặt sân
-  + Quản lý thông báo
-  + Thay đổi thông tin cá nhân
-- Với chủ sân (Người cho thuê sân):
-  + Quản lý sân cho thuê (Thêm, sửa, xóa)
-  + Xem lịch sử các yêu cầu đặt sân từ người dùng
-  + Quản lý thông báo
-  + Thay đổi thông tin cá nhân
+## 🛠 Công Nghệ Sử Dụng
 
-## Công Nghệ Sử Dụng
-- Flutter (Dart)
-- Kết nối RESTful API (Spring Boot Backend)
-- Hỗ trợ đa nền tảng: Android, iOS, Web
+*   **Framework:** Flutter 3.x
+*   **Ngôn ngữ:** Dart
+*   **Bản đồ:** Google Maps Flutter
+*   **Vị trí:** Geolocator & Geocoding
+*   **Thông báo:** Firebase Cloud Messaging (FCM) & Local Notifications
+*   **Lưu trữ cục bộ:** Shared Preferences
+*   **Network:** HTTP package
 
-## Cấu Trúc Dự Án
-```
-lib/
-  main.dart                # Điểm khởi đầu ứng dụng
-  models/                  # Định nghĩa các model: booking, favorite, field, rating, user
-  screens/                 # Các màn hình giao diện: đăng nhập, đăng ký, đặt sân, lịch sử, chủ sân, v.v.
-  services/                # Các dịch vụ gọi API backend
-```
+## ✨ Tính Năng Chính
 
-## Yêu Cầu Cài Đặt
-- Flutter SDK
-- Thiết bị Android thật hoặc giả lập đã bật debugging 
-- Đã có backend Spring Boot hoạt động
+### 📱 Dành cho Người Đặt Sân
+*   **Đăng nhập/Đăng ký:** Hỗ trợ đăng nhập truyền thống và Google Sign-In.
+*   **Tìm kiếm & Bản đồ:** Xem danh sách sân hoặc tìm kiếm trên bản đồ Google Maps.
+*   **Đặt sân:** Quy trình đặt sân trực quan, chọn ngày giờ và quản lý lịch đặt.
+*   **Yêu thích:** Lưu danh sách các sân bóng yêu thích để truy cập nhanh.
+*   **Thông báo:** Nhận thông báo thời gian thực về trạng thái đơn đặt sân.
 
-## Cài Đặt
-1. **Cài đặt Flutter SDK:** https://docs.flutter.dev/get-started/install
-2. **Clone repository:**
-   ```bash
-   git clone https://github.com/your-repo/football_booking_flutter.git
-   ```
-3. **Cài đặt dependencies:**
-   ```bash
-   flutter pub get
-   ```
-4. **Cấu hình endpoint backend:**
-   - Cập nhật URL backend trong file api_service.dart 
-5. **Chạy ứng dụng:**
-   ```bash
-   flutter run
-   ```
+### 🏠 Dành cho Chủ Sân
+*   **Quản lý sân bóng:** Chỉnh sửa thông tin, giá cả và hình ảnh sân.
+*   **Quản lý yêu cầu:** Theo dõi và duyệt các yêu cầu đặt sân từ khách hàng.
+*   **Hồ sơ cá nhân:** Quản lý thông tin tài khoản và cài đặt.
 
-## Liên Kết API Chính Với Backend
-- Xác thực: `/api/auth/login`, `/api/auth/register`
-- Đặt sân: `/api/bookings`
-- Quản lý sân: `/api/fields`
-- Yêu thích: `/api/favorites`
-- Đánh giá: `/api/ratings`
+## 📋 Yêu Cầu Hệ Thống
+
+*   Flutter SDK (^3.7.0)
+*   Android Studio / VS Code đã cài đặt Flutter extension
+*   Google Maps API Key (được cấu hình trong AndroidManifest.xml và AppDelegate.swift)
+*   File `google-services.json` (Android) và `GoogleService-Info.plist` (iOS) từ Firebase.
+
+## 🚀 Hướng Dẫn Cài Đặt
+
+1.  **Cài đặt phụ thuộc:**
+    ```bash
+    flutter pub get
+    ```
+
+2.  **Cấu hình API:**
+    *   Mở file `lib/services/api_service.dart` (hoặc file cấu hình tương đương) và cập nhật `baseUrl` trỏ đến Backend của bạn.
+
+3.  **Chạy ứng dụng:**
+    ```bash
+    flutter run
+    ```
+
+## 📁 Cấu Trúc Thư Mục
+
+*   `lib/models/`: Định nghĩa cấu trúc dữ liệu (Data models).
+*   `lib/screens/`: Chứa các màn hình UI (Login, Home, Booking, Profile...).
+*   `lib/services/`: Xử lý logic gọi API và các dịch vụ bên ngoài.
+*   `lib/assets/`: Chứa hình ảnh, icons và tài nguyên tĩnh.
 
 ---
-Football Booking Flutter - Đặt sân bóng dễ dàng, nhanh chóng và tiện lợi!
+Football Booking Flutter - Kết nối niềm đam mê bóng đá!
