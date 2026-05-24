@@ -2,30 +2,72 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'dart:math';
+import 'dart:ui';
+import 'package:provider/provider.dart';
 import '../models/field.dart';
 import '../services/api_service.dart';
+import '../services/theme_service.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   List<Field> fields = [];
   List<Field> filteredFields = [];
   List<Field> highRatedFields = [];
   List<Field> nearbyFields = [];
+  List<Field> filteredNearbyFields = [];
   bool isLoading = false;
   bool isLoadingLocation = false;
   Position? currentPosition;
   int _currentIndex = 0; //Lưu trạng thái NavBar
+  
+  // Trạng thái bộ lọc & sắp xếp nâng cao
+  String _searchQuery = '';
+  String _selectedQuickFilter = 'all';
   String _sortType = 'none';
   String _sortOrder = 'desc';
+  List<String> _selectedTypes = [];
+  List<String> _selectedGrassTypes = [];
+  RangeValues _priceRange = const RangeValues(0, 500000);
+  double _minRating = 0;
+
+  bool get _isFilterActive {
+    return _selectedTypes.isNotEmpty ||
+        _selectedGrassTypes.isNotEmpty ||
+        _priceRange.start > 0 ||
+        _priceRange.end < 500000 ||
+        _minRating > 0 ||
+        _sortType != 'none';
+  }
+
+  int get _activeFilterCount {
+    int count = 0;
+    if (_selectedTypes.isNotEmpty) count += 1;
+    if (_selectedGrassTypes.isNotEmpty) count += 1;
+    if (_priceRange.start > 0 || _priceRange.end < 500000) count += 1;
+    if (_minRating > 0) count += 1;
+    if (_sortType != 'none') count += 1;
+    return count;
+  }
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      setState(() {});
+    });
     fetchFields();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   void fetchFields() async {
@@ -33,10 +75,10 @@ class _HomeScreenState extends State<HomeScreen> {
       isLoading = true;
     });
     List<Field> fetchedFields = await ApiService.getPublicFields();
+    fields = fetchedFields;
+    highRatedFields = fetchedFields.where((f) => (f.rating ?? 0) >= 4).toList();
+    _applyFiltersAndSort();
     setState(() {
-      fields = fetchedFields;
-      filteredFields = fetchedFields;
-      highRatedFields = fetchedFields.where((f) => (f.rating ?? 0) >= 4).toList();
       isLoading = false;
     });
   }
@@ -177,9 +219,8 @@ class _HomeScreenState extends State<HomeScreen> {
     // Sắp xếp theo khoảng cách gần nhất
     fieldsWithDistance.sort((a, b) => (a.distance ?? double.infinity).compareTo(b.distance ?? double.infinity));
 
-    setState(() {
-      nearbyFields = fieldsWithDistance;
-    });
+    nearbyFields = fieldsWithDistance;
+    _applyFiltersAndSort();
   }
 
   // Hàm bỏ dấu tiếng Việt (Map implementation)
@@ -207,44 +248,519 @@ class _HomeScreenState extends State<HomeScreen> {
     return str;
   }
 
-  void _filterFields(String query) {
-    setState(() {
-      if (query.isEmpty) {
-        filteredFields = fields;
-      } else {
-        final q = query.trim().toLowerCase();
-        final normalizedQuery = removeDiacritics(query).trim().toLowerCase();
-        
-        filteredFields = fields.where((field) {
-          final name = field.name.toLowerCase();
-          // 1. Tìm chính xác (có dấu)
-          if (name.contains(q)) return true;
-          
-          // 2. Tìm tương đối (không dấu)
-          final normalizedName = removeDiacritics(field.name).toLowerCase();
-          return normalizedName.contains(normalizedQuery);
-        }).toList();
-      }
-    });
+  void _applyFiltersAndSort() {
+    filteredFields = _filterAndSortList(fields);
+    filteredNearbyFields = _filterAndSortList(nearbyFields, keepDistanceSort: _sortType == 'none');
+    setState(() {});
   }
 
-  void _sortFields() {
-    List<Field> list = [...filteredFields];
-    if (_sortType == 'price') {
-      list.sort((a, b) => _sortOrder == 'asc'
-          ? a.pricePerHour.compareTo(b.pricePerHour)
-          : b.pricePerHour.compareTo(a.pricePerHour));
-    } else if (_sortType == 'rating') {
-      list.sort((a, b) => _sortOrder == 'asc'
-          ? (a.rating ?? 0).compareTo(b.rating ?? 0)
-          : (b.rating ?? 0).compareTo(a.rating ?? 0));
-    } else {
-      // Mặc định: sắp xếp theo tên sân (tăng dần, không phân biệt hoa thường)
-      list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+  List<Field> _filterAndSortList(List<Field> source, {bool keepDistanceSort = false}) {
+    List<Field> result = [...source];
+
+    // 1. Lọc theo tìm kiếm
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.trim().toLowerCase();
+      final normalizedQuery = removeDiacritics(_searchQuery).trim().toLowerCase();
+      result = result.where((field) {
+        final name = field.name.toLowerCase();
+        if (name.contains(q)) return true;
+        final normalizedName = removeDiacritics(field.name).toLowerCase();
+        return normalizedName.contains(normalizedQuery);
+      }).toList();
     }
-    setState(() {
-      filteredFields = list;
-    });
+
+    // 2. Lọc theo phím lọc nhanh
+    if (_selectedQuickFilter == 'sân 5') {
+      result = result.where((f) => f.type == '5').toList();
+    } else if (_selectedQuickFilter == 'sân 7') {
+      result = result.where((f) => f.type == '7').toList();
+    } else if (_selectedQuickFilter == 'sân 11') {
+      result = result.where((f) => f.type == '11').toList();
+    } else if (_selectedQuickFilter == 'natural_grass') {
+      result = result.where((f) => f.grassType == 'natural').toList();
+    } else if (_selectedQuickFilter == 'good_price') {
+      result = result.where((f) => f.pricePerHour <= 200000).toList();
+    } else if (_selectedQuickFilter == 'high_rating') {
+      result = result.where((f) => (f.rating ?? 0) >= 4.5).toList();
+    }
+
+    // 3. Lọc nâng cao từ Bottom Sheet
+    if (_selectedTypes.isNotEmpty) {
+      final mappedTypes = _selectedTypes.map((t) {
+        if (t == 'Sân 5') return '5';
+        if (t == 'Sân 7') return '7';
+        if (t == 'Sân 11') return '11';
+        return t;
+      }).toList();
+      result = result.where((f) => mappedTypes.contains(f.type)).toList();
+    }
+    if (_selectedGrassTypes.isNotEmpty) {
+      final mappedGrass = _selectedGrassTypes.map((g) {
+        if (g == 'Cỏ nhân tạo') return 'artificial';
+        if (g == 'Cỏ tự nhiên') return 'natural';
+        return g;
+      }).toList();
+      result = result.where((f) => mappedGrass.contains(f.grassType)).toList();
+    }
+    result = result.where((f) => f.pricePerHour >= _priceRange.start && f.pricePerHour <= _priceRange.end).toList();
+    if (_minRating > 0) {
+      result = result.where((f) => (f.rating ?? 0) >= _minRating).toList();
+    }
+
+    // 4. Sắp xếp
+    if (!keepDistanceSort) {
+      if (_sortType == 'price') {
+        result.sort((a, b) => _sortOrder == 'asc'
+            ? a.pricePerHour.compareTo(b.pricePerHour)
+            : b.pricePerHour.compareTo(a.pricePerHour));
+      } else if (_sortType == 'rating') {
+        result.sort((a, b) => _sortOrder == 'asc'
+            ? (a.rating ?? 0).compareTo(b.rating ?? 0)
+            : (b.rating ?? 0).compareTo(a.rating ?? 0));
+      } else {
+        result.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      }
+    }
+
+    return result;
+  }
+
+  Widget _buildQuickFilterChip(String key, String label) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isModern = themeProvider.isModernMode;
+    final isSelected = _selectedQuickFilter == key;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: ChoiceChip(
+        label: Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Roboto',
+            color: isSelected
+                ? (isModern ? Colors.black : Colors.white)
+                : (isModern ? Colors.white70 : Colors.black87),
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+        selected: isSelected,
+        onSelected: (selected) {
+          setState(() {
+            _selectedQuickFilter = key;
+          });
+          _applyFiltersAndSort();
+        },
+        selectedColor: isModern ? Colors.white : Colors.amber,
+        backgroundColor: isModern ? const Color(0xFF16181D) : Colors.grey[200],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: isSelected
+                ? (isModern ? Colors.white : Colors.amber)
+                : (isModern ? Colors.white10 : Colors.transparent),
+          ),
+        ),
+        showCheckmark: false,
+      ),
+    );
+  }
+
+  Widget _buildFilterChoiceChip(
+    StateSetter setSheetState,
+    String key,
+    String label,
+    bool isSelected,
+    Function(bool) onSelected,
+  ) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isModern = themeProvider.isModernMode;
+
+    return ChoiceChip(
+      label: Text(
+        label,
+        style: TextStyle(
+          fontFamily: 'Roboto',
+          color: isSelected
+              ? (isModern ? Colors.black : Colors.white)
+              : (isModern ? Colors.white70 : Colors.black87),
+        ),
+      ),
+      selected: isSelected,
+      onSelected: onSelected,
+      selectedColor: isModern ? Colors.white : Colors.amber,
+      backgroundColor: isModern ? const Color(0xFF16181D) : Colors.grey[100],
+      showCheckmark: false,
+    );
+  }
+
+  void _showFilterBottomSheet(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isModern = themeProvider.isModernMode;
+
+    String tempSortType = _sortType;
+    String tempSortOrder = _sortOrder;
+    List<String> tempSelectedTypes = List.from(_selectedTypes);
+    List<String> tempSelectedGrassTypes = List.from(_selectedGrassTypes);
+    RangeValues tempPriceRange = _priceRange;
+    double tempMinRating = _minRating;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setSheetState) {
+            return ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isModern ? const Color(0xE60A0B0E) : Colors.white.withOpacity(0.95),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                    border: Border.all(
+                      color: isModern ? Colors.white12 : Colors.grey[300]!,
+                      width: 1.5,
+                    ),
+                  ),
+                  padding: EdgeInsets.only(
+                    top: 16,
+                    left: 20,
+                    right: 20,
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 48,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: isModern ? Colors.white30 : Colors.grey[300],
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Bộ lọc nâng cao',
+                              style: TextStyle(
+                                fontFamily: 'Roboto',
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: isModern ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                setSheetState(() {
+                                  tempSortType = 'none';
+                                  tempSortOrder = 'desc';
+                                  tempSelectedTypes.clear();
+                                  tempSelectedGrassTypes.clear();
+                                  tempPriceRange = const RangeValues(0, 500000);
+                                  tempMinRating = 0;
+                                });
+                              },
+                              child: Text(
+                                'Đặt lại',
+                                style: TextStyle(
+                                  fontFamily: 'Roboto',
+                                  color: isModern ? themeProvider.accentColor : Colors.amber[800],
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Divider(),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Sắp xếp theo',
+                          style: TextStyle(
+                            fontFamily: 'Roboto',
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: isModern ? Colors.white70 : Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            _buildFilterChoiceChip(
+                              setSheetState,
+                              'none',
+                              'Mặc định',
+                              tempSortType == 'none',
+                              (selected) {
+                                setSheetState(() {
+                                  tempSortType = 'none';
+                                });
+                              },
+                            ),
+                            _buildFilterChoiceChip(
+                              setSheetState,
+                              'price_asc',
+                              'Giá tăng dần',
+                              tempSortType == 'price' && tempSortOrder == 'asc',
+                              (selected) {
+                                setSheetState(() {
+                                  tempSortType = 'price';
+                                  tempSortOrder = 'asc';
+                                });
+                              },
+                            ),
+                            _buildFilterChoiceChip(
+                              setSheetState,
+                              'price_desc',
+                              'Giá giảm dần',
+                              tempSortType == 'price' && tempSortOrder == 'desc',
+                              (selected) {
+                                setSheetState(() {
+                                  tempSortType = 'price';
+                                  tempSortOrder = 'desc';
+                                });
+                              },
+                            ),
+                            _buildFilterChoiceChip(
+                              setSheetState,
+                              'rating_desc',
+                              'Đánh giá cao',
+                              tempSortType == 'rating',
+                              (selected) {
+                                setSheetState(() {
+                                  tempSortType = 'rating';
+                                  tempSortOrder = 'desc';
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'Loại sân',
+                          style: TextStyle(
+                            fontFamily: 'Roboto',
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: isModern ? Colors.white70 : Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          children: ['Sân 5', 'Sân 7', 'Sân 11'].map((type) {
+                            final isSelected = tempSelectedTypes.contains(type);
+                            return FilterChip(
+                              label: Text(
+                                type,
+                                style: TextStyle(
+                                  fontFamily: 'Roboto',
+                                  color: isSelected
+                                      ? (isModern ? Colors.black : Colors.white)
+                                      : (isModern ? Colors.white70 : Colors.black87),
+                                ),
+                              ),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                setSheetState(() {
+                                  if (selected) {
+                                    tempSelectedTypes.add(type);
+                                  } else {
+                                    tempSelectedTypes.remove(type);
+                                  }
+                                });
+                              },
+                              selectedColor: isModern ? Colors.white : Colors.amber,
+                              backgroundColor: isModern ? const Color(0xFF16181D) : Colors.grey[100],
+                              checkmarkColor: isModern ? Colors.black : Colors.white,
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'Mặt cỏ',
+                          style: TextStyle(
+                            fontFamily: 'Roboto',
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: isModern ? Colors.white70 : Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          children: ['Cỏ nhân tạo', 'Cỏ tự nhiên'].map((grass) {
+                            final isSelected = tempSelectedGrassTypes.contains(grass);
+                            return FilterChip(
+                              label: Text(
+                                grass,
+                                style: TextStyle(
+                                  fontFamily: 'Roboto',
+                                  color: isSelected
+                                      ? (isModern ? Colors.black : Colors.white)
+                                      : (isModern ? Colors.white70 : Colors.black87),
+                                ),
+                              ),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                setSheetState(() {
+                                  if (selected) {
+                                    tempSelectedGrassTypes.add(grass);
+                                  } else {
+                                    tempSelectedGrassTypes.remove(grass);
+                                  }
+                                });
+                              },
+                              selectedColor: isModern ? Colors.white : Colors.amber,
+                              backgroundColor: isModern ? const Color(0xFF16181D) : Colors.grey[100],
+                              checkmarkColor: isModern ? Colors.black : Colors.white,
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Khoảng giá (VNĐ/giờ)',
+                              style: TextStyle(
+                                fontFamily: 'Roboto',
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: isModern ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                            Text(
+                              '${tempPriceRange.start.toInt() ~/ 1000}k - ${tempPriceRange.end.toInt() ~/ 1000}k+',
+                              style: TextStyle(
+                                fontFamily: 'Roboto',
+                                fontWeight: FontWeight.bold,
+                                color: isModern ? themeProvider.accentColor : Colors.amber[800],
+                              ),
+                            ),
+                          ],
+                        ),
+                        RangeSlider(
+                          values: tempPriceRange,
+                          min: 0,
+                          max: 500000,
+                          divisions: 10,
+                          activeColor: isModern ? Colors.white : Colors.amber,
+                          inactiveColor: isModern ? Colors.white24 : Colors.grey[300],
+                          labels: RangeLabels(
+                            '${tempPriceRange.start.toInt()}đ',
+                            '${tempPriceRange.end.toInt()}đ',
+                          ),
+                          onChanged: (values) {
+                            setSheetState(() {
+                              tempPriceRange = values;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Đánh giá tối thiểu',
+                              style: TextStyle(
+                                fontFamily: 'Roboto',
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: isModern ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                            Text(
+                              tempMinRating == 0 ? 'Tất cả' : '${tempMinRating.toStringAsFixed(1)} ⭐ trở lên',
+                              style: TextStyle(
+                                fontFamily: 'Roboto',
+                                fontWeight: FontWeight.bold,
+                                color: isModern ? themeProvider.accentColor : Colors.amber[800],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [0.0, 3.0, 4.0, 4.5].map((rating) {
+                            final isSelected = tempMinRating == rating;
+                            return ChoiceChip(
+                              label: Text(
+                                rating == 0 ? 'Tất cả' : '$rating ⭐',
+                                style: TextStyle(
+                                  fontFamily: 'Roboto',
+                                  color: isSelected
+                                      ? (isModern ? Colors.black : Colors.white)
+                                      : (isModern ? Colors.white70 : Colors.black87),
+                                ),
+                              ),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                setSheetState(() {
+                                  tempMinRating = rating.toDouble();
+                                });
+                              },
+                              selectedColor: isModern ? Colors.white : Colors.amber,
+                              backgroundColor: isModern ? const Color(0xFF16181D) : Colors.grey[100],
+                              showCheckmark: false,
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 32),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                _sortType = tempSortType;
+                                _sortOrder = tempSortOrder;
+                                _selectedTypes = tempSelectedTypes;
+                                _selectedGrassTypes = tempSelectedGrassTypes;
+                                _priceRange = tempPriceRange;
+                                _minRating = tempMinRating;
+                              });
+                              _applyFiltersAndSort();
+                              Navigator.pop(context);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isModern ? Colors.white : Colors.amber,
+                              foregroundColor: isModern ? Colors.black : Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text(
+                              'Áp dụng bộ lọc',
+                              style: TextStyle(
+                                fontFamily: 'Roboto',
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   void navigateToFieldDetails(Field field) {
@@ -253,108 +769,93 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Nếu đang được nhúng trong MainTabScaffold thì không cần BottomNavigationBar nữa
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isModern = themeProvider.isModernMode;
+
+    return Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
-          backgroundColor: Colors.amberAccent,
+          backgroundColor: isModern ? const Color(0xFF0A0B0E) : Colors.amberAccent,
           elevation: 0,
-          title: Container(
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    onChanged: _filterFields,
-                    decoration: InputDecoration(
-                      hintText: 'Tìm kiếm sân',
-                      prefixIcon: Icon(Icons.search),
-                      border: InputBorder.none,
-                    ),
-                  ),
+          title: Row(
+            children: [
+              Image.asset(
+                'lib/assets/images/logo.png',
+                height: 32,
+                errorBuilder: (context, error, stackTrace) {
+                  return Icon(
+                    Icons.sports_soccer,
+                    color: isModern ? Colors.white : Colors.black87,
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Đặt sân nhanh',
+                style: TextStyle(
+                  fontFamily: 'Roboto',
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: isModern ? Colors.white : Colors.black87,
                 ),
-                SizedBox(width: 8),
-                PopupMenuButton<String>(
-                  icon: Icon(Icons.sort, color: Colors.amber[800]),
-                  tooltip: 'Sắp xếp',
-                  onSelected: (value) {
-                    if (value == 'price_asc') {
-                      _sortType = 'price'; _sortOrder = 'asc';
-                    } else if (value == 'price_desc') {
-                      _sortType = 'price'; _sortOrder = 'desc';
-                    } else if (value == 'rating_asc') {
-                      _sortType = 'rating'; _sortOrder = 'asc';
-                    } else if (value == 'rating_desc') {
-                      _sortType = 'rating'; _sortOrder = 'desc';
-                    } else {
-                      _sortType = 'none';
-                    }
-                    _sortFields();
-                  },
-                  itemBuilder: (context) => [
-                    PopupMenuItem(value: 'price_asc', child: Text('Giá tăng dần')),
-                    PopupMenuItem(value: 'price_desc', child: Text('Giá giảm dần')),
-                    PopupMenuItem(value: 'rating_asc', child: Text('Đánh giá tăng dần')),
-                    PopupMenuItem(value: 'rating_desc', child: Text('Đánh giá giảm dần')),
-                    PopupMenuItem(value: 'none', child: Text('Mặc định')),
-                  ],
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
           actions: [
-
             IconButton(
-              icon: Icon(Icons.favorite),
+              icon: Icon(
+                Icons.favorite,
+                color: isModern ? Colors.white70 : Colors.black87,
+              ),
               onPressed: () {
                 Navigator.pushNamed(context, '/favorites');
               },
             ),
             IconButton(
-              icon: Icon(Icons.history),
+              icon: Icon(
+                Icons.history,
+                color: isModern ? Colors.white70 : Colors.black87,
+              ),
               onPressed: () {
                 Navigator.pushNamed(context, '/bookingHistory');
               },
             ),
             IconButton(
-              icon: Icon(Icons.person),
+              icon: Icon(
+                Icons.person,
+                color: isModern ? Colors.white70 : Colors.black87,
+              ),
               onPressed: () {
                 Navigator.pushNamed(context, '/profile');
               },
             ),
           ],
-          // Thêm TabBar vào AppBar bằng thuộc tính "bottom"
           bottom: PreferredSize(
-            preferredSize: Size.fromHeight(50), // điều chỉnh chiều cao của TabBar tùy ý
+            preferredSize: const Size.fromHeight(50),
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // Padding 2 lề & padding dọc
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Container(
-                height:40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: Colors.white, // Màu nền cho toàn bộ thanh TabBar
-                  borderRadius: BorderRadius.circular(20), // Bo góc cho Container chứa TabBar
+                  color: isModern ? const Color(0xFF16181D) : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: Colors.amber, // Border màu amber
-                    width: 1.5,           // Độ dày của border
+                    color: isModern ? Colors.white24 : Colors.amber,
+                    width: 1.5,
                   ),
                 ),
                 child: TabBar(
+                  controller: _tabController,
                   indicatorColor: Colors.transparent,
-                  dividerColor: Colors.transparent, //loại bỏ đường màu đen
+                  dividerColor: Colors.transparent,
                   indicator: BoxDecoration(
-                    color: Colors.amber, // Nền vàng cho tab được chọn
-                    borderRadius: BorderRadius.circular(20), // Bo góc cho indicator
+                    color: isModern ? const Color(0x26FFFFFF) : Colors.amber,
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  indicatorSize: TabBarIndicatorSize.tab, // Indicator bao phủ toàn bộ tab
-                  labelColor: Colors.white,        // Chữ trắng cho tab được chọn
-                  unselectedLabelColor: Colors.amber, // Chữ đen cho các tab không chọn
-                  tabs: [
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: isModern ? Colors.white54 : Colors.amber,
+                  tabs: const [
                     Tab(text: 'Tất cả sân'),
                     Tab(text: 'Sân gần bạn'),
                   ],
@@ -362,407 +863,591 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-
         ),
-        // Hiển thị nội dung tùy thuộc vào tab đang chọn
-        body: TabBarView(
+        body: Column(
           children: [
-            // Tab "Tất cả sân": danh sách sân công cộng
-            isLoading
-                ? Center(child: CircularProgressIndicator())
-                : ListView.builder(
-                  itemCount: filteredFields.length,
-                  itemBuilder: (context, index) {
-                    Field field = filteredFields[index];
-                    return Card(
-                      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                      child: InkWell(
-                        onTap: () => navigateToFieldDetails(field),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            // Tính toán chiều rộng cho hình ảnh (1/5 tổng chiều rộng của Card)
-                            double imageWidth = constraints.maxWidth / 5;
-                            return Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 8.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: isModern ? const Color(0xFF16181D) : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isModern ? Colors.white10 : Colors.grey[300]!,
+                        ),
+                      ),
+                      child: TextField(
+                        onChanged: (val) {
+                          _searchQuery = val;
+                          _applyFiltersAndSort();
+                        },
+                        style: TextStyle(
+                          fontFamily: 'Roboto',
+                          color: isModern ? Colors.white : Colors.black87,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Tìm kiếm sân bóng...',
+                          hintStyle: TextStyle(
+                            color: isModern ? Colors.white30 : Colors.black45,
+                            fontSize: 14,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: isModern ? Colors.white54 : Colors.black54,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (_selectedQuickFilter == 'all') ...[
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: () => _showFilterBottomSheet(context),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 250),
+                            height: 40,
+                            width: 40,
+                            decoration: BoxDecoration(
+                              color: _isFilterActive
+                                  ? (isModern ? themeProvider.accentColor : Colors.amber)
+                                  : (isModern ? const Color(0xFF16181D) : Colors.amber[50]),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: _isFilterActive
+                                    ? (isModern ? themeProvider.accentColor : Colors.amber[700]!)
+                                    : (isModern ? Colors.white10 : Colors.amber[200]!),
+                                width: 1.5,
+                              ),
+                              boxShadow: _isFilterActive
+                                  ? [
+                                      BoxShadow(
+                                        color: (isModern ? themeProvider.accentColor : Colors.amber).withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      )
+                                    ]
+                                  : null,
+                            ),
+                            child: Icon(
+                              Icons.tune,
+                              color: _isFilterActive
+                                  ? (isModern ? Colors.black : Colors.white)
+                                  : (isModern ? themeProvider.accentColor : Colors.amber[800]),
+                            ),
+                          ),
+                          if (_isFilterActive)
+                            Positioned(
+                              top: -4,
+                              right: -4,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: isModern ? Colors.redAccent : Colors.red,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isModern ? const Color(0xFF0A0B0E) : Colors.white,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 18,
+                                  minHeight: 18,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '$_activeFilterCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      height: 1.0,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Container(
+              height: 40,
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  _buildQuickFilterChip('all', 'Tất cả'),
+                  _buildQuickFilterChip('sân 7', 'Sân 7'),
+                  _buildQuickFilterChip('sân 11', 'Sân 11'),
+                  _buildQuickFilterChip('good_price', 'Giá tốt 💵'),
+                  _buildQuickFilterChip('high_rating', 'Đánh giá cao ⭐'),
+                ],
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : filteredFields.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  // Phần hiển thị hình ảnh ở bên trái
-                                  Container(
-                                    width: imageWidth,
-                                    height: imageWidth * 0.75,
-                                    // Điều chỉnh tỉ lệ aspect theo mong muốn
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(8.0),
-                                      child:
-                                          (field.imageUrl?.isEmpty ?? true)
-                                              ? Image.asset(
-                                                'lib/assets/images/san_bong.png',
-                                                fit: BoxFit.cover,
-                                              )
-                                              : Image.network(
-                                                field.imageUrl!,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (context, error, stackTrace) {
-                                                  return Image.asset(
-                                                    'lib/assets/images/san_bong.png',
-                                                    fit: BoxFit.cover,
-                                                  );
-                                                },
-                                              ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  // Phần nội dung hiển thị thông tin chi tiết của field
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          field.name,
-                                          style: const TextStyle(
-                                            fontFamily: 'Roboto',
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          field.address ?? '',
-                                          style: TextStyle(
-                                            fontFamily: 'Roboto',
-                                            fontSize: 14,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Row(
-                                          children: [
-                                            const Icon(
-                                              Icons.star,
-                                              size: 16,
-                                              color: Colors.yellow,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              field.rating != null
-                                                  ? (field.rating % 1 == 0
-                                                      ? field.rating.toInt().toString()
-                                                      : field.rating.toStringAsFixed(1))
-                                                  : '0',
-                                              style: const TextStyle(
-                                                fontFamily: 'Roboto',
-                                              ),
-                                            ),
-                                            const Spacer(),
-                                            Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(Icons.monetization_on, color: Colors.green[600], size: 16),
-                                                const SizedBox(width: 2),
-                                                Text(
-                                                  '${field.pricePerHour.toInt()} VNĐ/giờ',
-                                                  style: const TextStyle(
-                                                    fontFamily: 'Roboto',
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  // Icon trailing (nếu muốn hiển thị)
                                   Icon(
-                                    field.available == true ? Icons.check_circle : Icons.cancel,
-                                    color: field.available == true ? Colors.green : Colors.red,
+                                    fields.isEmpty ? Icons.sports_soccer : Icons.filter_list_off,
+                                    size: 80,
+                                    color: isModern ? Colors.white30 : Colors.grey[400],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    fields.isEmpty ? 'Không có sân bóng nào' : 'Không có sân phù hợp bộ lọc',
+                                    style: TextStyle(
+                                      fontFamily: 'Roboto',
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: isModern ? Colors.white70 : Colors.grey[600],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    fields.isEmpty
+                                        ? 'Vui lòng quay lại sau'
+                                        : 'Thử điều chỉnh hoặc xóa bớt tiêu chí lọc',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontFamily: 'Roboto',
+                                      fontSize: 14,
+                                      color: isModern ? Colors.white54 : Colors.grey[500],
+                                    ),
                                   ),
                                 ],
                               ),
-                            );
-                          },
-                        ),
-                      ),
-                    );
-                  },
-                ),
-
-            // Tab "Sân gần bạn": hiển thị sân theo khoảng cách gần nhất
-            isLoading
-                ? Center(child: CircularProgressIndicator())
-                : currentPosition == null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.location_off,
-                            size: 80,
-                            color: Colors.grey[400],
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'Bật vị trí để xem sân gần bạn',
-                            style: TextStyle(
-                              fontFamily: 'Roboto',
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Chúng tôi cần quyền truy cập vị trí để\nhiển thị các sân gần nhất với bạn',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontFamily: 'Roboto',
-                              fontSize: 14,
-                              color: Colors.grey[500],
-                            ),
-                          ),
-                          SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: isLoadingLocation ? null : getCurrentLocation,
-                            icon: isLoadingLocation
-                                ? SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                : Icon(Icons.my_location),
-                            label: Text(
-                              isLoadingLocation ? 'Đang lấy vị trí...' : 'Bật vị trí',
-                              style: TextStyle(fontFamily: 'Roboto'),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.amber,
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : isLoadingLocation
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(
-                              color: Colors.amber,
-                              strokeWidth: 3,
-                            ),
-                            SizedBox(height: 20),
-                            Text(
-                              'Đang tìm kiếm sân gần bạn...',
-                              style: TextStyle(
-                                fontFamily: 'Roboto',
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Vui lòng đợi trong giây lát',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontFamily: 'Roboto',
-                                fontSize: 14,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : nearbyFields.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.location_searching,
-                              size: 80,
-                              color: Colors.grey[400],
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'Không tìm thấy sân gần bạn',
-                              style: TextStyle(
-                                fontFamily: 'Roboto',
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Các sân chưa có thông tin vị trí\nhoặc không có sân nào trong khu vực',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontFamily: 'Roboto',
-                                fontSize: 14,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: () async {
-                          await getCurrentLocation();
-                        },
-                        child: ListView.builder(
-                          itemCount: nearbyFields.length,
-                          itemBuilder: (context, index) {
-                            Field field = nearbyFields[index];
-                            return Card(
-                              margin: EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                              child: InkWell(
-                                onTap: () => navigateToFieldDetails(field),
-                                child: LayoutBuilder(
-                                  builder: (context, constraints) {
-                                    double imageWidth = constraints.maxWidth / 5;
-                                    return Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Container(
-                                            width: imageWidth,
-                                            height: imageWidth * 0.75,
-                                            child: ClipRRect(
-                                              borderRadius: BorderRadius.circular(8.0),
-                                              child: (field.imageUrl?.isEmpty ?? true)
-                                                  ? Image.asset(
-                                                    'lib/assets/images/san_bong.png',
-                                                    fit: BoxFit.cover,
-                                                  )
-                                                  : Image.network(
-                                                    field.imageUrl!,
-                                                    fit: BoxFit.cover,
-                                                    errorBuilder: (context, error, stackTrace) {
-                                                      return Image.asset(
-                                                        'lib/assets/images/san_bong.png',
-                                                        fit: BoxFit.cover,
-                                                      );
-                                                    },
-                                                  ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  field.name,
-                                                  style: const TextStyle(
-                                                    fontFamily: 'Roboto',
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
+                            )
+                          : ListView.builder(
+                              itemCount: filteredFields.length,
+                              itemBuilder: (context, index) {
+                                Field field = filteredFields[index];
+                                return Card(
+                                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                                  child: InkWell(
+                                    onTap: () => navigateToFieldDetails(field),
+                                    child: LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        double imageWidth = constraints.maxWidth / 5;
+                                        return Padding(
+                                          padding: const EdgeInsets.all(8.0),
+                                          child: Row(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Container(
+                                                width: imageWidth,
+                                                height: imageWidth * 0.75,
+                                                child: ClipRRect(
+                                                  borderRadius: BorderRadius.circular(8.0),
+                                                  child: (field.imageUrl?.isEmpty ?? true)
+                                                      ? Image.asset(
+                                                          'lib/assets/images/san_bong.png',
+                                                          fit: BoxFit.cover,
+                                                        )
+                                                      : Image.network(
+                                                          field.imageUrl!,
+                                                          fit: BoxFit.cover,
+                                                          errorBuilder: (context, error, stackTrace) {
+                                                            return Image.asset(
+                                                              'lib/assets/images/san_bong.png',
+                                                              fit: BoxFit.cover,
+                                                            );
+                                                          },
+                                                        ),
                                                 ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  field.address ?? '',
-                                                  style: TextStyle(
-                                                    fontFamily: 'Roboto',
-                                                    fontSize: 14,
-                                                    color: Colors.grey[600],
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                // Hiển thị đánh giá, khoảng cách và giá tiền trên cùng 1 dòng
-                                                Row(
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
                                                   children: [
-                                                    // Đánh giá
-                                                    const Icon(
-                                                      Icons.star,
-                                                      size: 16,
-                                                      color: Colors.yellow,
-                                                    ),
-                                                    const SizedBox(width: 4),
                                                     Text(
-                                                      field.rating != null
-                                                          ? (field.rating % 1 == 0
-                                                              ? field.rating.toInt().toString()
-                                                              : field.rating.toStringAsFixed(1))
-                                                          : '0',
-                                                      style: const TextStyle(
-                                                        fontFamily: 'Roboto',
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
-
-                                                    // Spacer
-                                                    const SizedBox(width: 12),
-
-                                                    // Khoảng cách
-                                                    Icon(
-                                                      Icons.location_on,
-                                                      size: 16,
-                                                      color: Colors.blue[600],
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Text(
-                                                      field.distance != null
-                                                          ? '${field.distance!.toStringAsFixed(1)} km'
-                                                          : 'N/A',
+                                                      field.name,
                                                       style: TextStyle(
                                                         fontFamily: 'Roboto',
-                                                        fontSize: 12,
-                                                        color: Colors.blue[600],
-                                                        fontWeight: FontWeight.w500,
+                                                        fontSize: 16,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: isModern ? Colors.white : Colors.black87,
                                                       ),
                                                     ),
-
-                                                    const Spacer(),
-
-                                                    // Giá tiền
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      field.address ?? '',
+                                                      style: TextStyle(
+                                                        fontFamily: 'Roboto',
+                                                        fontSize: 14,
+                                                        color: isModern ? Colors.white54 : Colors.grey[600],
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
                                                     Row(
-                                                      mainAxisSize: MainAxisSize.min,
                                                       children: [
-                                                        Icon(Icons.monetization_on, color: Colors.green[600], size: 16),
-                                                        const SizedBox(width: 2),
+                                                        const Icon(
+                                                          Icons.star,
+                                                          size: 16,
+                                                          color: Colors.yellow,
+                                                        ),
+                                                        const SizedBox(width: 4),
                                                         Text(
-                                                          '${field.pricePerHour.toInt()} VNĐ/giờ',
-                                                          style: const TextStyle(
+                                                          field.rating != null
+                                                              ? (field.rating % 1 == 0
+                                                                  ? field.rating.toInt().toString()
+                                                                  : field.rating.toStringAsFixed(1))
+                                                              : '0',
+                                                          style: TextStyle(
                                                             fontFamily: 'Roboto',
-                                                            fontSize: 12,
+                                                            color: isModern ? Colors.white70 : Colors.black87,
+                                                            fontWeight: FontWeight.bold,
                                                           ),
+                                                        ),
+                                                        const Spacer(),
+                                                        Row(
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          children: [
+                                                            Icon(
+                                                              Icons.monetization_on,
+                                                              color: isModern ? themeProvider.accentColor : Colors.green[600],
+                                                              size: 16,
+                                                            ),
+                                                            const SizedBox(width: 2),
+                                                            Text(
+                                                              '${field.pricePerHour.toInt()} VNĐ/giờ',
+                                                              style: TextStyle(
+                                                                fontFamily: 'Roboto',
+                                                                fontWeight: FontWeight.bold,
+                                                                color: isModern ? themeProvider.accentColor : Colors.green[700],
+                                                              ),
+                                                            ),
+                                                          ],
                                                         ),
                                                       ],
                                                     ),
                                                   ],
                                                 ),
-                                              ],
+                                              ),
+                                              Icon(
+                                                field.available == true ? Icons.check_circle : Icons.cancel,
+                                                color: field.available == true ? Colors.green : Colors.red,
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                  isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : currentPosition == null
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.location_off,
+                                    size: 80,
+                                    color: isModern ? Colors.white30 : Colors.grey[400],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Bật vị trí để xem sân gần bạn',
+                                    style: TextStyle(
+                                      fontFamily: 'Roboto',
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: isModern ? Colors.white70 : Colors.grey[600],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Chúng tôi cần quyền truy cập vị trí để\nhiển thị các sân gần nhất với bạn',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontFamily: 'Roboto',
+                                      fontSize: 14,
+                                      color: isModern ? Colors.white54 : Colors.grey[500],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  ElevatedButton.icon(
+                                    onPressed: isLoadingLocation ? null : getCurrentLocation,
+                                    icon: isLoadingLocation
+                                        ? SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: isModern ? Colors.black : Colors.white,
+                                            ),
+                                          )
+                                        : const Icon(Icons.my_location),
+                                    label: Text(
+                                      isLoadingLocation ? 'Đang lấy vị trí...' : 'Bật vị trí',
+                                      style: const TextStyle(fontFamily: 'Roboto'),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: isModern ? Colors.white : Colors.amber,
+                                      foregroundColor: isModern ? Colors.black : Colors.white,
+                                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : isLoadingLocation
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      CircularProgressIndicator(
+                                        color: isModern ? Colors.white : Colors.amber,
+                                        strokeWidth: 3,
+                                      ),
+                                      const SizedBox(height: 20),
+                                      Text(
+                                        'Đang tìm kiếm sân gần bạn...',
+                                        style: TextStyle(
+                                          fontFamily: 'Roboto',
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: isModern ? Colors.white70 : Colors.grey[600],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Vui lòng đợi trong giây lát',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontFamily: 'Roboto',
+                                          fontSize: 14,
+                                          color: isModern ? Colors.white54 : Colors.grey[500],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : filteredNearbyFields.isEmpty
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            nearbyFields.isEmpty ? Icons.location_searching : Icons.filter_list_off,
+                                            size: 80,
+                                            color: isModern ? Colors.white30 : Colors.grey[400],
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            nearbyFields.isEmpty ? 'Không tìm thấy sân gần bạn' : 'Không có sân phù hợp bộ lọc',
+                                            style: TextStyle(
+                                              fontFamily: 'Roboto',
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: isModern ? Colors.white70 : Colors.grey[600],
                                             ),
                                           ),
-                                          // Icon hiển thị trạng thái sân
-                                          Icon(
-                                            field.available == true ? Icons.check_circle : Icons.cancel,
-                                            color: field.available == true ? Colors.green : Colors.red,
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            nearbyFields.isEmpty
+                                                ? 'Các sân chưa có thông tin vị trí\nhoặc không có sân nào trong khu vực'
+                                                : 'Thử điều chỉnh hoặc xóa bớt tiêu chí lọc',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontFamily: 'Roboto',
+                                              fontSize: 14,
+                                              color: isModern ? Colors.white54 : Colors.grey[500],
+                                            ),
                                           ),
                                         ],
                                       ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
+                                    )
+                                  : RefreshIndicator(
+                                      onRefresh: () async {
+                                        await getCurrentLocation();
+                                      },
+                                      child: ListView.builder(
+                                        itemCount: filteredNearbyFields.length,
+                                        itemBuilder: (context, index) {
+                                          Field field = filteredNearbyFields[index];
+                                          return Card(
+                                            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                                            child: InkWell(
+                                              onTap: () => navigateToFieldDetails(field),
+                                              child: LayoutBuilder(
+                                                builder: (context, constraints) {
+                                                  double imageWidth = constraints.maxWidth / 5;
+                                                  return Padding(
+                                                    padding: const EdgeInsets.all(8.0),
+                                                    child: Row(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Container(
+                                                          width: imageWidth,
+                                                          height: imageWidth * 0.75,
+                                                          child: ClipRRect(
+                                                            borderRadius: BorderRadius.circular(8.0),
+                                                            child: (field.imageUrl?.isEmpty ?? true)
+                                                                ? Image.asset(
+                                                                    'lib/assets/images/san_bong.png',
+                                                                    fit: BoxFit.cover,
+                                                                  )
+                                                                : Image.network(
+                                                                    field.imageUrl!,
+                                                                    fit: BoxFit.cover,
+                                                                    errorBuilder: (context, error, stackTrace) {
+                                                                      return Image.asset(
+                                                                        'lib/assets/images/san_bong.png',
+                                                                        fit: BoxFit.cover,
+                                                                      );
+                                                                    },
+                                                                  ),
+                                                          ),
+                                                        ),
+                                                        const SizedBox(width: 8),
+                                                        Expanded(
+                                                          child: Column(
+                                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                                            children: [
+                                                              Text(
+                                                                field.name,
+                                                                style: TextStyle(
+                                                                  fontFamily: 'Roboto',
+                                                                  fontSize: 16,
+                                                                  fontWeight: FontWeight.bold,
+                                                                  color: isModern ? Colors.white : Colors.black87,
+                                                                ),
+                                                              ),
+                                                              const SizedBox(height: 4),
+                                                              Text(
+                                                                field.address ?? '',
+                                                                style: TextStyle(
+                                                                  fontFamily: 'Roboto',
+                                                                  fontSize: 14,
+                                                                  color: isModern ? Colors.white54 : Colors.grey[600],
+                                                                ),
+                                                              ),
+                                                              const SizedBox(height: 4),
+                                                              Wrap(
+                                                                spacing: 8,
+                                                                runSpacing: 4,
+                                                                crossAxisAlignment: WrapCrossAlignment.center,
+                                                                children: [
+                                                                  Row(
+                                                                    mainAxisSize: MainAxisSize.min,
+                                                                    children: [
+                                                                      const Icon(
+                                                                        Icons.star,
+                                                                        size: 16,
+                                                                        color: Colors.yellow,
+                                                                      ),
+                                                                      const SizedBox(width: 4),
+                                                                      Text(
+                                                                        field.rating != null
+                                                                            ? (field.rating % 1 == 0
+                                                                                ? field.rating.toInt().toString()
+                                                                                : field.rating.toStringAsFixed(1))
+                                                                            : '0',
+                                                                        style: TextStyle(
+                                                                          fontFamily: 'Roboto',
+                                                                          fontSize: 12,
+                                                                          fontWeight: FontWeight.bold,
+                                                                          color: isModern ? Colors.white70 : Colors.black87,
+                                                                        ),
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                  Row(
+                                                                    mainAxisSize: MainAxisSize.min,
+                                                                    children: [
+                                                                      Icon(
+                                                                        Icons.location_on,
+                                                                        size: 16,
+                                                                        color: isModern ? themeProvider.accentColor : Colors.blue[600],
+                                                                      ),
+                                                                      const SizedBox(width: 4),
+                                                                      Text(
+                                                                        field.distance != null
+                                                                            ? '${field.distance!.toStringAsFixed(1)} km'
+                                                                            : 'N/A',
+                                                                        style: TextStyle(
+                                                                          fontFamily: 'Roboto',
+                                                                          fontSize: 12,
+                                                                          color: isModern ? themeProvider.accentColor : Colors.blue[600],
+                                                                          fontWeight: FontWeight.bold,
+                                                                        ),
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                  Row(
+                                                                    mainAxisSize: MainAxisSize.min,
+                                                                    children: [
+                                                                      Icon(
+                                                                        Icons.monetization_on,
+                                                                        color: isModern ? themeProvider.accentColor : Colors.green[600],
+                                                                        size: 16,
+                                                                      ),
+                                                                      const SizedBox(width: 2),
+                                                                      Text(
+                                                                        '${field.pricePerHour.toInt()} VNĐ/giờ',
+                                                                        style: TextStyle(
+                                                                          fontFamily: 'Roboto',
+                                                                          fontWeight: FontWeight.bold,
+                                                                          fontSize: 12,
+                                                                          color: isModern ? themeProvider.accentColor : Colors.green[700],
+                                                                        ),
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                        Icon(
+                                                          field.available == true ? Icons.check_circle : Icons.cancel,
+                                                          color: field.available == true ? Colors.green : Colors.red,
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                ],
+              ),
+            ),
           ],
         ),
         bottomNavigationBar: null,
-      ),
-    );
+      );
   }
 }

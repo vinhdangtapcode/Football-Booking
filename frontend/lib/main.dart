@@ -5,6 +5,8 @@ import 'package:football_booking_flutter/screens/main_tab_scaffold.dart';
 import 'package:football_booking_flutter/screens/owner_edit_profile_screen.dart';
 import 'package:football_booking_flutter/services/push_notification_service.dart';
 import 'package:football_booking_flutter/services/api_service.dart';
+import 'package:football_booking_flutter/services/theme_service.dart';
+import 'package:provider/provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
@@ -47,19 +49,24 @@ void main() async {
   // Set navigatorKey cho PushNotificationService để xử lý notification tap
   PushNotificationService.navigatorKey = navigatorKey;
   
-  runApp(FootballBookingApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: FootballBookingApp(),
+    ),
+  );
 }
 
 class FootballBookingApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return MaterialApp(
       title: 'Football Booking',
       debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+      theme: themeProvider.themeData,
       navigatorObservers: [routeObserver],
       home: SplashScreen(), // Sử dụng SplashScreen từ file mới
       routes: {
@@ -76,8 +83,8 @@ class FootballBookingApp extends StatelessWidget {
         '/addEditField': (context) => AddEditFieldScreen(),
         '/profile': (context) => ProfileScreen(),
         '/fieldBookingHistory': (context) => FieldBookingHistoryScreen(),
-        '/notifications': (context) => MainTabScaffold(initialIndex: 2),
-        '/settings': (context) => MainTabScaffold(initialIndex: 3),
+        '/notifications': (context) => MainTabScaffold(initialIndex: 3),
+        '/settings': (context) => MainTabScaffold(initialIndex: 4),
         '/map': (context) => MapScreen(field: ModalRoute.of(context)!.settings.arguments as Field),
         '/ownerMain': (context) => OwnerMainTabScaffold(),
         '/ownerNotifications': (context) => OwnerMainTabScaffold(initialIndex: 1),

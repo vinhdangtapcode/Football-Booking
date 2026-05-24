@@ -45,6 +45,8 @@ public class BookingController {
 				b.getId(),
 				b.getField() != null ? b.getField().getId() : null,
 				b.getField() != null ? b.getField().getName() : null,
+				b.getField() != null ? b.getField().getAddress() : null,
+				(b.getField() != null && b.getField().getPricePerHour() != null) ? b.getField().getPricePerHour().doubleValue() : 0.0,
 				b.getFromTime(),
 				b.getToTime(),
 				b.getAdditional(),

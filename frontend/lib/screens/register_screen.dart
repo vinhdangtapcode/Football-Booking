@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/theme_service.dart';
+import 'package:provider/provider.dart';
 
 class RegisterScreen extends StatefulWidget {
   @override
@@ -42,8 +44,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isModern = themeProvider.isModernMode;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: isModern ? Colors.black : Colors.white,
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
@@ -53,7 +58,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 SizedBox(height: 32),
-                Icon(Icons.sports_soccer, color: Colors.amber, size: 64),
+                Icon(Icons.sports_soccer, color: isModern ? Colors.white : Colors.amber, size: 64),
                 SizedBox(height: 16),
                 Text(
                   "Đăng ký",
@@ -61,29 +66,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     fontFamily: 'Roboto',
                     fontWeight: FontWeight.bold,
                     fontSize: 28,
-                    color: Colors.amber[800],
+                    color: isModern ? Colors.white : Colors.amber[800],
+                    letterSpacing: isModern ? 2 : null,
                   ),
                 ),
                 SizedBox(height: 32),
                 TextField(
                   controller: nameController,
+                  style: TextStyle(color: isModern ? Colors.white : Colors.black87),
                   decoration: InputDecoration(
                     labelText: "Họ và tên",
-                    prefixIcon: Icon(Icons.person_outline, color: Colors.amber[700]),
+                    labelStyle: TextStyle(color: isModern ? Colors.white70 : null),
+                    prefixIcon: Icon(Icons.person_outline, color: isModern ? Colors.white : Colors.amber[700]),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                     filled: true,
-                    fillColor: Colors.amber[50],
+                    fillColor: isModern ? Color(0xFF1A1A1A) : Colors.amber[50],
                   ),
                 ),
                 SizedBox(height: 20),
                 TextField(
                   controller: emailController,
+                  style: TextStyle(color: isModern ? Colors.white : Colors.black87),
                   decoration: InputDecoration(
                     labelText: "Email",
-                    prefixIcon: Icon(Icons.email_outlined, color: Colors.amber[700]),
+                    labelStyle: TextStyle(color: isModern ? Colors.white70 : null),
+                    prefixIcon: Icon(Icons.email_outlined, color: isModern ? Colors.white : Colors.amber[700]),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                     filled: true,
-                    fillColor: Colors.amber[50],
+                    fillColor: isModern ? Color(0xFF1A1A1A) : Colors.amber[50],
                   ),
                   keyboardType: TextInputType.emailAddress,
                 ),
@@ -91,23 +101,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextField(
                   controller: passwordController,
                   obscureText: true,
+                  style: TextStyle(color: isModern ? Colors.white : Colors.black87),
                   decoration: InputDecoration(
                     labelText: "Mật khẩu",
-                    prefixIcon: Icon(Icons.lock_outline, color: Colors.amber[700]),
+                    labelStyle: TextStyle(color: isModern ? Colors.white70 : null),
+                    prefixIcon: Icon(Icons.lock_outline, color: isModern ? Colors.white : Colors.amber[700]),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                     filled: true,
-                    fillColor: Colors.amber[50],
+                    fillColor: isModern ? Color(0xFF1A1A1A) : Colors.amber[50],
                   ),
                 ),
                 SizedBox(height: 20),
                 TextField(
                   controller: phoneController,
+                  style: TextStyle(color: isModern ? Colors.white : Colors.black87),
                   decoration: InputDecoration(
                     labelText: "Số điện thoại",
-                    prefixIcon: Icon(Icons.phone_outlined, color: Colors.amber[700]),
+                    labelStyle: TextStyle(color: isModern ? Colors.white70 : null),
+                    prefixIcon: Icon(Icons.phone_outlined, color: isModern ? Colors.white : Colors.amber[700]),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                     filled: true,
-                    fillColor: Colors.amber[50],
+                    fillColor: isModern ? Color(0xFF1A1A1A) : Colors.amber[50],
                   ),
                   keyboardType: TextInputType.phone,
                 ),
@@ -117,7 +131,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     "Vai trò",
-                    style: TextStyle(fontWeight: FontWeight.w600, color: Colors.amber[800]),
+                    style: TextStyle(fontWeight: FontWeight.w600, color: isModern ? Colors.white : Colors.amber[800]),
                   ),
                 ),
                 SizedBox(height: 8),
@@ -130,8 +144,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         onChanged: (val) {
                           setState(() => selectedRole = val!);
                         },
-                        title: Text('Người dùng', style: TextStyle(color: Colors.amber[900], fontWeight: FontWeight.w500, fontSize: 14), overflow: TextOverflow.ellipsis),
-                        activeColor: Colors.amber,
+                        title: Text('Người dùng', style: TextStyle(color: isModern ? Colors.white : Colors.amber[900], fontWeight: FontWeight.w500, fontSize: 14), overflow: TextOverflow.ellipsis),
+                        activeColor: isModern ? Colors.white : Colors.amber,
                         contentPadding: EdgeInsets.zero,
                         dense: true,
                         visualDensity: VisualDensity.compact,
@@ -144,8 +158,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         onChanged: (val) {
                           setState(() => selectedRole = val!);
                         },
-                        title: Text('Chủ sân', style: TextStyle(color: Colors.amber[900], fontWeight: FontWeight.w500, fontSize: 14), overflow: TextOverflow.ellipsis),
-                        activeColor: Colors.amber,
+                        title: Text('Chủ sân', style: TextStyle(color: isModern ? Colors.white : Colors.amber[900], fontWeight: FontWeight.w500, fontSize: 14), overflow: TextOverflow.ellipsis),
+                        activeColor: isModern ? Colors.white : Colors.amber,
                         contentPadding: EdgeInsets.zero,
                         dense: true,
                         visualDensity: VisualDensity.compact,
@@ -155,14 +169,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 SizedBox(height: 32),
                 isLoading
-                    ? CircularProgressIndicator(color: Colors.amber)
+                    ? CircularProgressIndicator(color: isModern ? Colors.white : Colors.amber)
                     : SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: register,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.amber,
-                            foregroundColor: Colors.white,
+                            backgroundColor: isModern ? Colors.white : Colors.amber,
+                            foregroundColor: isModern ? Colors.black : Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             textStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
@@ -177,7 +191,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   },
                   child: Text(
                     "Đã có tài khoản? Đăng nhập",
-                    style: TextStyle(color: Colors.amber[800], fontWeight: FontWeight.w500),
+                    style: TextStyle(color: isModern ? Colors.white70 : Colors.amber[800], fontWeight: FontWeight.w500),
                   ),
                 ),
                 SizedBox(height: 32),

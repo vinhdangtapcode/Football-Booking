@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/field.dart';
 import '../services/api_service.dart';
+import '../services/theme_service.dart';
 
 class AddRatingScreen extends StatefulWidget {
   @override
@@ -52,17 +54,25 @@ class _AddRatingScreenState extends State<AddRatingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isModern = themeProvider.isModernMode;
+
     return Scaffold(
       appBar: AppBar(
         title: Text("Thêm đánh giá", style: TextStyle(fontFamily: 'Roboto', fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.amber,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         elevation: 0,
       ),
+      backgroundColor: isModern ? Colors.black : const Color(0xFFF8F8F8),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          color: isModern ? Color(0xFF121212) : null,
+          elevation: isModern ? 1 : 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: isModern ? BorderSide(color: Colors.white10) : BorderSide.none,
+          ),
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -71,12 +81,17 @@ class _AddRatingScreenState extends State<AddRatingScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.sports_soccer, color: Colors.amber[800]),
+                    Icon(Icons.sports_soccer, color: isModern ? Colors.white70 : Colors.amber[800]),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         field?.name ?? '',
-                        style: const TextStyle(fontFamily: 'Roboto', fontWeight: FontWeight.bold, fontSize: 18),
+                        style: TextStyle(
+                          fontFamily: 'Roboto',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: isModern ? Colors.white : null,
+                        ),
                       ),
                     ),
                   ],
@@ -92,10 +107,12 @@ class _AddRatingScreenState extends State<AddRatingScreen> {
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
                           labelText: "Điểm (1-5)",
-                          labelStyle: TextStyle(fontFamily: 'Roboto'),
+                          labelStyle: TextStyle(fontFamily: 'Roboto', color: isModern ? Colors.white70 : null),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          enabledBorder: isModern ? OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white24)) : null,
+                          focusedBorder: isModern ? OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white)) : null,
                         ),
-                        style: TextStyle(fontFamily: 'Roboto', fontWeight: FontWeight.bold, fontSize: 18),
+                        style: TextStyle(fontFamily: 'Roboto', fontWeight: FontWeight.bold, fontSize: 18, color: isModern ? Colors.white : null),
                       ),
                     ),
                   ],
@@ -106,10 +123,12 @@ class _AddRatingScreenState extends State<AddRatingScreen> {
                   maxLines: 3,
                   decoration: InputDecoration(
                     labelText: "Bình luận",
-                    labelStyle: TextStyle(fontFamily: 'Roboto'),
+                    labelStyle: TextStyle(fontFamily: 'Roboto', color: isModern ? Colors.white70 : null),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    enabledBorder: isModern ? OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white24)) : null,
+                    focusedBorder: isModern ? OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white)) : null,
                   ),
-                  style: TextStyle(fontFamily: 'Roboto', fontSize: 16),
+                  style: TextStyle(fontFamily: 'Roboto', fontSize: 16, color: isModern ? Colors.white : null),
                 ),
                 const SizedBox(height: 20),
                 Row(
@@ -121,30 +140,31 @@ class _AddRatingScreenState extends State<AddRatingScreen> {
                           isAnonymous = val ?? false;
                         });
                       },
-                      activeColor: Colors.amber,
+                      activeColor: isModern ? Colors.white : Colors.amber,
+                      checkColor: isModern ? Colors.black : Colors.white,
                     ),
-                    const Text(
+                    Text(
                       "Đánh giá Ẩn danh",
-                      style: TextStyle(fontFamily: 'Roboto', fontWeight: FontWeight.w500),
+                      style: TextStyle(fontFamily: 'Roboto', fontWeight: FontWeight.w500, color: isModern ? Colors.white70 : null),
                     ),
                   ],
                 ),
                 const SizedBox(height: 28),
                 Center(
                   child: isLoading
-                      ? CircularProgressIndicator()
+                      ? CircularProgressIndicator(color: isModern ? Colors.white : Colors.amber)
                       : SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
                             onPressed: submitRating,
-                            icon: Icon(Icons.send, color: Colors.white),
+                            icon: Icon(Icons.send, color: isModern ? Colors.black : Colors.white),
                             label: Text(
                               "Gửi đánh giá",
                               style: TextStyle(fontSize: 16, fontFamily: 'Roboto', fontWeight: FontWeight.bold),
                             ),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.amber[800],
-                              foregroundColor: Colors.white,
+                              backgroundColor: isModern ? Colors.white : Colors.amber[800],
+                              foregroundColor: isModern ? Colors.black : Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 18),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             ),

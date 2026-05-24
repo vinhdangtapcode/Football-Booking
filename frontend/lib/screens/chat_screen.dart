@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../models/conversation.dart';
 import '../models/message.dart';
 import '../services/api_service.dart';
+import '../services/theme_service.dart';
 
 class ChatScreen extends StatefulWidget {
   @override
@@ -133,6 +136,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isModern = themeProvider.isModernMode;
+
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -140,21 +146,28 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             Text(
               otherPartyName ?? 'Chat',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isModern ? Colors.white : Colors.black),
             ),
             if (fieldName != null)
               Text(
                 fieldName!,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal, color: isModern ? Colors.white70 : Colors.black87),
               ),
           ],
         ),
-        backgroundColor: Colors.amber,
-        elevation: 2,
+        backgroundColor: isModern ? Colors.black : Colors.amber,
+        iconTheme: IconThemeData(color: isModern ? Colors.white : Colors.black),
+        elevation: isModern ? 0 : 2,
+        bottom: isModern ? PreferredSize(
+          preferredSize: Size.fromHeight(1.0),
+          child: Container(color: Colors.white24, height: 1.0),
+        ) : null,
       ),
+      backgroundColor: isModern ? Colors.black : null,
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
+          color: isModern ? Colors.black : null,
+          gradient: isModern ? null : LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [Colors.amber.shade50, Colors.white],
@@ -165,9 +178,9 @@ class _ChatScreenState extends State<ChatScreen> {
             // Messages list
             Expanded(
               child: isLoading
-                  ? Center(child: CircularProgressIndicator(color: Colors.amber))
+                  ? Center(child: CircularProgressIndicator(color: isModern ? Colors.white : Colors.amber))
                   : messages.isEmpty
-                      ? _buildEmptyState()
+                      ? _buildEmptyState(isModern)
                       : ListView.builder(
                           controller: _scrollController,
                           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -180,8 +193,8 @@ class _ChatScreenState extends State<ChatScreen> {
                             
                             return Column(
                               children: [
-                                if (showDateHeader) _buildDateHeader(message.sentAt),
-                                _buildMessageBubble(message, isMe),
+                                if (showDateHeader) _buildDateHeader(message.sentAt, isModern),
+                                _buildMessageBubble(message, isMe, isModern),
                               ],
                             );
                           },
@@ -189,35 +202,35 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             
             // Input area
-            _buildInputArea(),
+            _buildInputArea(isModern),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(bool isModern) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.chat_bubble_outline, size: 80, color: Colors.grey[300]),
+          Icon(Icons.chat_bubble_outline, size: 80, color: isModern ? Colors.white24 : Colors.grey[300]),
           SizedBox(height: 16),
           Text(
             'Chưa có tin nhắn',
-            style: TextStyle(fontSize: 18, color: Colors.grey[500]),
+            style: TextStyle(fontSize: 18, color: isModern ? Colors.white70 : Colors.grey[500]),
           ),
           SizedBox(height: 8),
           Text(
             'Hãy gửi tin nhắn đầu tiên!',
-            style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+            style: TextStyle(fontSize: 14, color: isModern ? Colors.white54 : Colors.grey[400]),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDateHeader(DateTime date) {
+  Widget _buildDateHeader(DateTime date, bool isModern) {
     final now = DateTime.now();
     String dateStr;
     
@@ -234,18 +247,18 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.grey[200],
+          color: isModern ? Colors.white12 : Colors.grey[200],
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
           dateStr,
-          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          style: TextStyle(fontSize: 12, color: isModern ? Colors.white70 : Colors.grey[600]),
         ),
       ),
     );
   }
 
-  Widget _buildMessageBubble(Message message, bool isMe) {
+  Widget _buildMessageBubble(Message message, bool isMe, bool isModern) {
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -257,14 +270,15 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isMe ? Colors.amber : Colors.white,
+          color: isMe ? (isModern ? Colors.white : Colors.amber) : (isModern ? Color(0xFF1A1A1A) : Colors.white),
+          border: (!isMe && isModern) ? Border.all(color: Colors.white24) : null,
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(18),
             topRight: Radius.circular(18),
             bottomLeft: isMe ? Radius.circular(18) : Radius.circular(4),
             bottomRight: isMe ? Radius.circular(4) : Radius.circular(18),
           ),
-          boxShadow: [
+          boxShadow: isModern ? null : [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
               blurRadius: 5,
@@ -279,7 +293,7 @@ class _ChatScreenState extends State<ChatScreen> {
               message.content,
               style: TextStyle(
                 fontSize: 15,
-                color: isMe ? Colors.white : Colors.black87,
+                color: isMe ? (isModern ? Colors.black : Colors.white) : (isModern ? Colors.white : Colors.black87),
               ),
             ),
             SizedBox(height: 4),
@@ -290,7 +304,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   DateFormat('HH:mm').format(message.sentAt),
                   style: TextStyle(
                     fontSize: 11,
-                    color: isMe ? Colors.white70 : Colors.grey[500],
+                    color: isMe ? (isModern ? Colors.black54 : Colors.white70) : (isModern ? Colors.white54 : Colors.grey[500]),
                   ),
                 ),
                 if (isMe) ...[
@@ -298,7 +312,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   Icon(
                     message.isRead ? Icons.done_all : Icons.done,
                     size: 14,
-                    color: message.isRead ? Colors.white : Colors.white70,
+                    color: message.isRead ? (isModern ? Colors.black87 : Colors.white) : (isModern ? Colors.black54 : Colors.white70),
                   ),
                 ],
               ],
@@ -309,12 +323,13 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildInputArea() {
+  Widget _buildInputArea(bool isModern) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
+        color: isModern ? Colors.black : Colors.white,
+        border: isModern ? Border(top: BorderSide(color: Colors.white24, width: 0.5)) : null,
+        boxShadow: isModern ? null : [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
@@ -329,15 +344,21 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: isModern ? Color(0xFF1A1A1A) : Colors.grey[100],
                   borderRadius: BorderRadius.circular(24),
+                  border: isModern ? Border.all(color: Colors.white24) : null,
                 ),
                 child: TextField(
                   controller: _messageController,
+                  style: TextStyle(color: isModern ? Colors.white : Colors.black87),
                   decoration: InputDecoration(
                     hintText: 'Nhập tin nhắn...',
-                    hintStyle: TextStyle(color: Colors.grey[400]),
+                    hintStyle: TextStyle(color: isModern ? Colors.white54 : Colors.grey[400]),
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(vertical: 12),
                   ),
                   maxLines: null,
@@ -349,9 +370,9 @@ class _ChatScreenState extends State<ChatScreen> {
             SizedBox(width: 8),
             Container(
               decoration: BoxDecoration(
-                color: Colors.amber,
+                color: isModern ? Colors.white : Colors.amber,
                 shape: BoxShape.circle,
-                boxShadow: [
+                boxShadow: isModern ? null : [
                   BoxShadow(
                     color: Colors.amber.withOpacity(0.4),
                     blurRadius: 8,
@@ -366,10 +387,10 @@ class _ChatScreenState extends State<ChatScreen> {
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: isModern ? Colors.black : Colors.white,
                         ),
                       )
-                    : Icon(Icons.send, color: Colors.white),
+                    : Icon(Icons.send, color: isModern ? Colors.black : Colors.white),
                 onPressed: isSending ? null : _sendMessage,
               ),
             ),
