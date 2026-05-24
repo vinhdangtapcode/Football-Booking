@@ -63,5 +63,5 @@ flutter run
 Dự án được phát triển dưới mục đích học tập và xây dựng giải pháp thực tế.
 
 ---
-© 2024 Football Booking Team. Kết nối niềm đam mê sân cỏ!
+© 2026 Football Booking Team. Kết nối niềm đam mê sân cỏ!
 
