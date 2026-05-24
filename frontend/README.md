@@ -1,59 +1,78 @@
-# Football Booking Frontend - Ứng Dụng Đặt Sân Bóng Đá
+# 📱 Football Booking Frontend
 
-Frontend của hệ thống đặt sân bóng đá được xây dựng bằng Flutter, cung cấp trải nghiệm đa nền tảng (Android, iOS, Web) mượt mà cho người dùng và chủ sân.
+Ứng dụng di động dành cho hệ thống đặt sân bóng đá, được xây dựng bằng **Flutter**. Ứng dụng cung cấp trải nghiệm mượt mà cho cả người đi thuê sân và chủ sân trên cả hai nền tảng Android và iOS.
 
-## 🛠 Công Nghệ Sử Dụng
+## 🚀 Công Nghệ Sử Dụng
 
-*   **Framework:** Flutter 3.x
-*   **Ngôn ngữ:** Dart
-*   **Bản đồ:** Google Maps Flutter
-*   **Vị trí:** Geolocator & Geocoding
-*   **Thông báo:** Firebase Cloud Messaging (FCM) & Local Notifications
-*   **Lưu trữ cục bộ:** Shared Preferences
-*   **Network:** HTTP package
+- **Framework:** Flutter 3.x
+- **Ngôn ngữ:** Dart
+- **Quản lý trạng thái:** Provider / Bloc
+- **Bản đồ:** Google Maps Flutter
+- **Thông báo:** Firebase Cloud Messaging & Local Notifications
+- **Network:** HTTP Client (Xử lý REST API)
+- **Tiện ích:** Geolocator, Image Picker, Shared Preferences
 
 ## ✨ Tính Năng Chính
 
-### 📱 Dành cho Người Đặt Sân
-*   **Đăng nhập/Đăng ký:** Hỗ trợ đăng nhập truyền thống và Google Sign-In.
-*   **Tìm kiếm & Bản đồ:** Xem danh sách sân hoặc tìm kiếm trên bản đồ Google Maps.
-*   **Đặt sân:** Quy trình đặt sân trực quan, chọn ngày giờ và quản lý lịch đặt.
-*   **Yêu thích:** Lưu danh sách các sân bóng yêu thích để truy cập nhanh.
-*   **Thông báo:** Nhận thông báo thời gian thực về trạng thái đơn đặt sân.
+### 🙋 Dành cho Người Thuê Sân
+- **Bản đồ Sân bóng:** Tìm kiếm và xem vị trí các sân bóng xung quanh qua Google Maps.
+- **Đặt sân nhanh:** Chọn ngày, khung giờ và xác nhận đặt sân trong vài thao tác.
+- **Lịch sử & Trạng thái:** Theo dõi các đơn đặt sân đã thực hiện và trạng thái hiện tại.
+- **Cá nhân hóa:** Quản lý sân bóng yêu thích và thông tin cá nhân.
 
-### 🏠 Dành cho Chủ Sân
-*   **Quản lý sân bóng:** Chỉnh sửa thông tin, giá cả và hình ảnh sân.
-*   **Quản lý yêu cầu:** Theo dõi và duyệt các yêu cầu đặt sân từ khách hàng.
-*   **Hồ sơ cá nhân:** Quản lý thông tin tài khoản và cài đặt.
+### 🏟 Dành cho Chủ Sân
+- **Bảng điều khiển:** Xem danh sách các yêu cầu đặt sân mới.
+- **Quản lý Sân:** Cập nhật thông tin chi tiết, giá cả và hình ảnh sân bóng.
+- **Thông báo:** Nhận thông báo tức thì khi có khách hàng đặt sân mới.
 
-## 📋 Yêu Cầu Hệ Thống
+## 📋 Yêu Cầu Cài Đặt
 
-*   Flutter SDK (^3.7.0)
-*   Android Studio / VS Code đã cài đặt Flutter extension
-*   Google Maps API Key (được cấu hình trong AndroidManifest.xml và AppDelegate.swift)
-*   File `google-services.json` (Android) và `GoogleService-Info.plist` (iOS) từ Firebase.
+- **Flutter SDK:** ^3.10.0
+- **Dart SDK:** ^3.0.0
+- **Công cụ:** Android Studio / VS Code (với Flutter Extension)
+- **Tài khoản Firebase:** Để cấu hình thông báo và Google Sign-In.
 
-## 🚀 Hướng Dẫn Cài Đặt
+## 🛠 Hướng Dẫn Cấu Hình
 
-1.  **Cài đặt phụ thuộc:**
-    ```bash
-    flutter pub get
-    ```
+### 1. Phụ thuộc
+Chạy lệnh sau để tải các gói thư viện:
+```bash
+flutter pub get
+```
 
-2.  **Cấu hình API:**
-    *   Mở file `lib/services/api_service.dart` (hoặc file cấu hình tương đương) và cập nhật `baseUrl` trỏ đến Backend của bạn.
+### 2. Cấu hình Firebase
+- Tải file `google-services.json` (Android) và `GoogleService-Info.plist` (iOS) từ console Firebase.
+- Đặt `google-services.json` vào `android/app/`.
+- Thêm `GoogleService-Info.plist` vào `ios/Runner/` qua Xcode.
 
-3.  **Chạy ứng dụng:**
-    ```bash
-    flutter run
-    ```
+### 3. Google Maps API
+- Lấy API Key từ Google Cloud Console.
+- Cấu hình Key trong `AndroidManifest.xml` (Android) và `AppDelegate.swift` (iOS).
 
-## 📁 Cấu Trúc Thư Mục
+### 4. Kết nối Backend
+Cập nhật `baseUrl` trong file cấu hình dịch vụ API (ví dụ: `lib/services/api_service.dart`) để trỏ đến địa chỉ Backend của bạn.
 
-*   `lib/models/`: Định nghĩa cấu trúc dữ liệu (Data models).
-*   `lib/screens/`: Chứa các màn hình UI (Login, Home, Booking, Profile...).
-*   `lib/services/`: Xử lý logic gọi API và các dịch vụ bên ngoài.
-*   `lib/assets/`: Chứa hình ảnh, icons và tài nguyên tĩnh.
+## 🏗 Chạy Ứng Dụng
+
+```bash
+# Chạy ở chế độ Debug
+flutter run
+
+# Build APK (Android)
+flutter build apk --release
+```
+
+## 📁 Cấu Trúc Mã Nguồn
+
+```text
+lib/
+├── assets/      # Hình ảnh, Fonts, Icons
+├── models/      # Lớp dữ liệu (POJO/Entities)
+├── screens/     # Giao diện người dùng (UI Screens)
+├── services/    # Xử lý API và Logic nghiệp vụ
+├── widgets/     # Các thành phần giao diện dùng chung
+└── main.dart    # Điểm khởi đầu của ứng dụng
+```
 
 ---
-Football Booking Flutter - Kết nối niềm đam mê bóng đá!
+Kết nối đam mê - Football Booking Flutter!

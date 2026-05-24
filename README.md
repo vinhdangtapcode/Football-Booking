@@ -1,43 +1,67 @@
-# Football Booking System - Hệ Thống Đặt Sân Bóng Đá
+# ⚽ Football Booking System - Hệ Thống Đặt Sân Bóng Đá Toàn Diện
 
-Dự án này là một hệ thống toàn diện cho phép người dùng tìm kiếm và đặt sân bóng đá, đồng thời cung cấp công cụ quản lý cho các chủ sân. Hệ thống được xây dựng với kiến trúc Client-Server hiện đại.
+Dự án Football Booking là một giải pháp quản lý và đặt sân bóng đá hiện đại, bao gồm giải pháp Backend mạnh mẽ và ứng dụng Frontend di động đa nền tảng. Hệ thống được thiết kế để tối ưu hóa quy trình đặt sân cho người dùng và quản lý kinh doanh cho chủ sân.
 
-## 🏗 Cấu Trúc Dự Án
+## 🏗 Cấu Trúc Dự Án (Monorepo)
 
-Hệ thống bao gồm hai phần chính:
+Dự án được tổ chức theo cấu trúc monorepo để dễ dàng quản lý đồng bộ giữa Backend và Frontend:
 
-*   **[Backend](./backend):** Xây dựng bằng Java Spring Boot, cung cấp các RESTful API, quản lý cơ sở dữ liệu và xác thực.
-*   **[Frontend](./frontend):** Ứng dụng di động đa nền tảng được xây dựng bằng Flutter, cung cấp giao diện người dùng mượt mà và trực quan.
+```text
+football_booking/
+├── backend/       # Mã nguồn Spring Boot (Java)
+├── frontend/      # Mã nguồn Flutter (Dart)
+└── README.md      # Tài liệu hướng dẫn tổng quát
+```
 
-## 🚀 Tính Năng Chính
+| Thành phần | Công nghệ chính | Link chi tiết |
+| :--- | :--- | :--- |
+| **Backend** | Spring Boot 3, Java 17, PostgreSQL, Security, JWT | [Xem chi tiết](./backend/README.md) |
+| **Frontend** | Flutter 3, Dart, Google Maps, Firebase FCM | [Xem chi tiết](./frontend/README.md) |
 
-### 🙋 Đối với Người Đặt Sân
-*   **Tìm kiếm sân:** Tìm kiếm sân bóng theo khu vực, giá cả và tiện ích.
-*   **Đặt sân trực tuyến:** Chọn khung giờ và đặt sân nhanh chóng.
-*   **Quản lý lịch sử:** Xem lại các đơn đặt sân đã thực hiện.
-*   **Yêu thích & Đánh giá:** Lưu các sân yêu thích và để lại nhận xét sau khi sử dụng.
-*   **Thông báo:** Nhận thông báo đẩy về trạng thái đặt sân qua Firebase.
+## 🌟 Tính Năng Nổi Bật
 
-### 🏟 Đối với Chủ Sân
-*   **Quản lý sân:** Thêm, sửa, xóa thông tin sân bóng và các khung giờ hoạt động.
-*   **Quản lý đặt sân:** Xem và quản lý các yêu cầu đặt sân từ khách hàng.
-*   **Thống kê:** Theo dõi hiệu suất kinh doanh (tùy chọn).
+### 📱 Đối với Người Dùng (Mobile App)
+*   **Tìm kiếm thông minh:** Tìm sân theo vị trí (Google Maps), giá cả và tiện ích.
+*   **Đặt sân thời gian thực:** Xem lịch sân trống và đặt chỗ ngay lập tức.
+*   **Thông báo đẩy:** Nhận cập nhật trạng tái đơn hàng qua Firebase Cloud Messaging.
+*   **Đánh giá & Yêu thích:** Lưu sân bóng quan tâm và để lại phản hồi sau trận đấu.
 
-## 🛠 Công Nghệ Sử Dụng
+### 🏟 Đối với Chủ Sân & Quản Trị Viên
+*   **Quản lý sân bóng:** Cập nhật thông tin, hình ảnh và quản lý khung giờ hoạt động linh hoạt.
+*   **Quản lý đặt sân:** Duyệt và theo dõi các đơn đặt sân tập trung.
+*   **Xác thực nâng cao:** Tích hợp Google OAuth2 cho người dùng và chủ sân.
 
-| Thành phần | Công nghệ |
-| :--- | :--- |
-| **Backend** | Java 17, Spring Boot 3, Spring Security, JWT, PostgreSQL, SpringDoc (Swagger) |
-| **Frontend** | Flutter, Dart, Google Maps API, Firebase Cloud Messaging |
-| **DevOps/Tools** | Railway (Deployment), Git, Maven |
+## 🚀 Hướng Dẫn Khởi Động Nhanh
 
-## 📖 Hướng Dẫn Bắt Đầu
+### 1. Yêu cầu hệ thống
+*   **Java 17** & **Maven**
+*   **Flutter SDK** (mới nhất)
+*   **PostgreSQL** (Database)
 
-Để chạy dự án này trên máy cục bộ, bạn cần thực hiện theo các bước hướng dẫn chi tiết trong từng thư mục:
+### 2. Thiết lập Backend
+```bash
+cd backend
+# Cấu hình file application.properties với DB của bạn
+mvn clean install
+mvn spring-boot:run
+```
 
-1.  **Thiết lập Backend:** Xem hướng dẫn tại [backend/README.md](./backend/README.md).
-2.  **Thiết lập Frontend:** Xem hướng dẫn tại [frontend/README.md](./frontend/README.md).
+### 3. Thiết lập Frontend
+```bash
+cd frontend
+flutter pub get
+# Đảm bảo đã thiết lập Google Maps API Key
+flutter run
+```
 
-## 📄 Giấy Phép
-Dự án này được phát triển cho mục đích giáo dục và thực hành.
+## 🛠 Sơ Đồ Công Nghệ
+- **Backend:** Spring Data JPA, Spring Security, JWT, Swagger (OpenAPI), Firebase Admin SDK.
+- **Frontend:** Provider/Bloc pattern, Google Maps, Firebase Core, HTTP Client.
+- **Deployment:** Hỗ trợ Docker (tùy chọn), Railway, Render.
+
+## 📄 License
+Dự án được phát triển dưới mục đích học tập và xây dựng giải pháp thực tế.
+
+---
+© 2024 Football Booking Team. Kết nối niềm đam mê sân cỏ!
 
