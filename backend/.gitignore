@@ -42,3 +42,11 @@ application.properties
 
 # Ignore Firebase Service Account Key
 src/main/resources/firebase-service-account.json
+
+# Maven local wrapper
+.mvn/
+!src/main/resources/application-example.properties
+
+# Secrets
+.env
+secret.properties

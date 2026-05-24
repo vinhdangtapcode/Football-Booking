@@ -59,3 +59,18 @@ android/app/google-services.json
 
 # API Keys
 lib/config/api_keys.dart
+
+# Secrets
+.env
+.env.*
+key.properties
+**/*.keystore
+**/*.jks
+
+# Flutter generic
+.flutter-plugins
+.flutter-plugins-dependencies
+.dart_tool/
+.pub/
+.pub-cache/
+/build/
