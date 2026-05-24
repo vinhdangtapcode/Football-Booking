@@ -54,7 +54,7 @@ flutter pub get
 flutter run
 ```
 
-## 🛠 Sơ Đồ Công Nghệ
+## Sơ Đồ Công Nghệ
 - **Backend:** Spring Data JPA, Spring Security, JWT, Swagger (OpenAPI), Firebase Admin SDK.
 - **Frontend:** Provider/Bloc pattern, Google Maps, Firebase Core, HTTP Client.
 - **Deployment:** Hỗ trợ Docker (tùy chọn), Railway, Render.
