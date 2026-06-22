@@ -75,6 +75,9 @@ public class OwnerController {
 			existingField.setClosingTime(field.getClosingTime());
 			existingField.setAvailable(field.getAvailable());
 			existingField.setOutdoor(field.getOutdoor());
+			if (field.getImageUrl() != null) {
+				existingField.setImageUrl(field.getImageUrl());
+			}
 			Field updatedField = fieldService.updateField(id, existingField);
 			return new ResponseEntity<>(updatedField, HttpStatus.OK);
 		} else {

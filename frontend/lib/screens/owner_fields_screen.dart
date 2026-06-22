@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/field.dart';
 import '../services/api_service.dart';
 
@@ -43,31 +44,102 @@ class _OwnerFieldsScreenState extends State<OwnerFieldsScreen> {
     });
   }
 
-  void deleteField(int fieldId) async {
+  void deleteField(Field field) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Xác nhận xóa sân'),
-        content: Text('Bạn có chắc chắn muốn xóa sân này không?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Hủy'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Xóa', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+      builder: (context) {
+        String inputVal = '';
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final isMatch = inputVal.trim() == field.name.trim();
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.red),
+                  SizedBox(width: 8),
+                  Text('Xác nhận xóa sân'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hành động này KHÔNG THỂ hoàn tác!',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Toàn bộ lịch đặt sân, đánh giá, hình ảnh và lượt yêu thích của sân "${field.name}" sẽ bị xóa vĩnh viễn khỏi hệ thống.',
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Nhập tên sân bên dưới để xác nhận:',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  SizedBox(height: 8),
+                  TextField(
+                    decoration: InputDecoration(
+                      hintText: field.name,
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    onChanged: (val) {
+                      setDialogState(() {
+                        inputVal = val;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text('Hủy'),
+                ),
+                ElevatedButton(
+                  onPressed: isMatch
+                      ? () => Navigator.of(context).pop(true)
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text('Xóa vĩnh viễn'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
     if (confirm != true) return;
-    bool success = await ApiService.deleteField(fieldId);
+
+    // Show loading spinner
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(child: CircularProgressIndicator(color: Colors.amber)),
+    );
+
+    bool success = await ApiService.deleteField(field.id!);
+    Navigator.of(context).pop(); // Close loading spinner
+
     if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Xóa sân "${field.name}" thành công!'),
+          backgroundColor: Colors.green,
+        ),
+      );
       fetchOwnerFields();
     } else {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Xóa sân thất bại!")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Xóa sân thất bại!"),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -144,15 +216,14 @@ class _OwnerFieldsScreenState extends State<OwnerFieldsScreen> {
                                               'lib/assets/images/san_bong.png',
                                               fit: BoxFit.cover,
                                             )
-                                          : Image.network(
-                                              field.imageUrl!,
+                                          : CachedNetworkImage(
+                                              imageUrl: field.imageUrl!,
                                               fit: BoxFit.cover,
-                                              errorBuilder: (context, error, stackTrace) {
-                                                return Image.asset(
-                                                  'lib/assets/images/san_bong.png',
-                                                  fit: BoxFit.cover,
-                                                );
-                                              },
+                                              placeholder: (_, __) => Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                              errorWidget: (_, __, ___) => Image.asset(
+                                                'lib/assets/images/san_bong.png',
+                                                fit: BoxFit.cover,
+                                              ),
                                             ),
                                     ),
                                   ),
@@ -220,7 +291,7 @@ class _OwnerFieldsScreenState extends State<OwnerFieldsScreen> {
                                       ),
                                       IconButton(
                                         icon: Icon(Icons.delete, color: Colors.red),
-                                        onPressed: () => deleteField(field.id!),
+                                        onPressed: () => deleteField(field),
                                       ),
                                     ],
                                   ),

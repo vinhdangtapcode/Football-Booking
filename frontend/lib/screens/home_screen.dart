@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'dart:math';
@@ -32,14 +33,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   String _sortOrder = 'desc';
   List<String> _selectedTypes = [];
   List<String> _selectedGrassTypes = [];
-  RangeValues _priceRange = const RangeValues(0, 500000);
+  RangeValues _priceRange = const RangeValues(0, 2000000);
   double _minRating = 0;
 
   bool get _isFilterActive {
     return _selectedTypes.isNotEmpty ||
         _selectedGrassTypes.isNotEmpty ||
         _priceRange.start > 0 ||
-        _priceRange.end < 500000 ||
+        _priceRange.end < 2000000 ||
         _minRating > 0 ||
         _sortType != 'none';
   }
@@ -48,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     int count = 0;
     if (_selectedTypes.isNotEmpty) count += 1;
     if (_selectedGrassTypes.isNotEmpty) count += 1;
-    if (_priceRange.start > 0 || _priceRange.end < 500000) count += 1;
+    if (_priceRange.start > 0 || _priceRange.end < 2000000) count += 1;
     if (_minRating > 0) count += 1;
     if (_sortType != 'none') count += 1;
     return count;
@@ -465,7 +466,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                   tempSortOrder = 'desc';
                                   tempSelectedTypes.clear();
                                   tempSelectedGrassTypes.clear();
-                                  tempPriceRange = const RangeValues(0, 500000);
+                                  tempPriceRange = const RangeValues(0, 2000000);
                                   tempMinRating = 0;
                                 });
                               },
@@ -640,7 +641,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               ),
                             ),
                             Text(
-                              '${tempPriceRange.start.toInt() ~/ 1000}k - ${tempPriceRange.end.toInt() ~/ 1000}k+',
+                              '${tempPriceRange.start.toInt() ~/ 1000}k - ${tempPriceRange.end.toInt() ~/ 1000}k${tempPriceRange.end.toInt() == 2000000 ? '+' : ''}',
                               style: TextStyle(
                                 fontFamily: 'Roboto',
                                 fontWeight: FontWeight.bold,
@@ -652,8 +653,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         RangeSlider(
                           values: tempPriceRange,
                           min: 0,
-                          max: 500000,
-                          divisions: 10,
+                          max: 2000000,
+                          divisions: 40,
                           activeColor: isModern ? Colors.white : Colors.amber,
                           inactiveColor: isModern ? Colors.white24 : Colors.grey[300],
                           labels: RangeLabels(
@@ -1003,161 +1004,174 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 children: [
                   isLoading
                       ? const Center(child: CircularProgressIndicator())
-                      : filteredFields.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    fields.isEmpty ? Icons.sports_soccer : Icons.filter_list_off,
-                                    size: 80,
-                                    color: isModern ? Colors.white30 : Colors.grey[400],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    fields.isEmpty ? 'Không có sân bóng nào' : 'Không có sân phù hợp bộ lọc',
-                                    style: TextStyle(
-                                      fontFamily: 'Roboto',
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: isModern ? Colors.white70 : Colors.grey[600],
+                      : RefreshIndicator(
+                          onRefresh: () async {
+                            fetchFields();
+                          },
+                          child: filteredFields.isEmpty
+                              ? ListView(
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  children: [
+                                    SizedBox(
+                                      height: MediaQuery.of(context).size.height * 0.6,
+                                      child: Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              fields.isEmpty ? Icons.sports_soccer : Icons.filter_list_off,
+                                              size: 80,
+                                              color: isModern ? Colors.white30 : Colors.grey[400],
+                                            ),
+                                            const SizedBox(height: 16),
+                                            Text(
+                                              fields.isEmpty ? 'Không có sân bóng nào' : 'Không có sân phù hợp bộ lọc',
+                                              style: TextStyle(
+                                                fontFamily: 'Roboto',
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                                color: isModern ? Colors.white70 : Colors.grey[600],
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              fields.isEmpty
+                                                  ? 'Vui lòng quay lại sau'
+                                                  : 'Thử điều chỉnh hoặc xóa bớt tiêu chí lọc',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                fontFamily: 'Roboto',
+                                                fontSize: 14,
+                                                color: isModern ? Colors.white54 : Colors.grey[500],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    fields.isEmpty
-                                        ? 'Vui lòng quay lại sau'
-                                        : 'Thử điều chỉnh hoặc xóa bớt tiêu chí lọc',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontFamily: 'Roboto',
-                                      fontSize: 14,
-                                      color: isModern ? Colors.white54 : Colors.grey[500],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : ListView.builder(
-                              itemCount: filteredFields.length,
-                              itemBuilder: (context, index) {
-                                Field field = filteredFields[index];
-                                return Card(
-                                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                                  child: InkWell(
-                                    onTap: () => navigateToFieldDetails(field),
-                                    child: LayoutBuilder(
-                                      builder: (context, constraints) {
-                                        double imageWidth = constraints.maxWidth / 5;
-                                        return Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: Row(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Container(
-                                                width: imageWidth,
-                                                height: imageWidth * 0.75,
-                                                child: ClipRRect(
-                                                  borderRadius: BorderRadius.circular(8.0),
-                                                  child: (field.imageUrl?.isEmpty ?? true)
-                                                      ? Image.asset(
-                                                          'lib/assets/images/san_bong.png',
-                                                          fit: BoxFit.cover,
-                                                        )
-                                                      : Image.network(
-                                                          field.imageUrl!,
-                                                          fit: BoxFit.cover,
-                                                          errorBuilder: (context, error, stackTrace) {
-                                                            return Image.asset(
+                                  ],
+                                )
+                              : ListView.builder(
+                                  physics: const AlwaysScrollableScrollPhysics(),
+                                  itemCount: filteredFields.length,
+                                  itemBuilder: (context, index) {
+                                    Field field = filteredFields[index];
+                                    return Card(
+                                      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                                      child: InkWell(
+                                        onTap: () => navigateToFieldDetails(field),
+                                        child: LayoutBuilder(
+                                          builder: (context, constraints) {
+                                            double imageWidth = constraints.maxWidth / 5;
+                                            return Padding(
+                                              padding: const EdgeInsets.all(8.0),
+                                              child: Row(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Container(
+                                                    width: imageWidth,
+                                                    height: imageWidth * 0.75,
+                                                    child: ClipRRect(
+                                                      borderRadius: BorderRadius.circular(8.0),
+                                                      child: (field.imageUrl?.isEmpty ?? true)
+                                                          ? Image.asset(
                                                               'lib/assets/images/san_bong.png',
                                                               fit: BoxFit.cover,
-                                                            );
-                                                          },
-                                                        ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      field.name,
-                                                      style: TextStyle(
-                                                        fontFamily: 'Roboto',
-                                                        fontSize: 16,
-                                                        fontWeight: FontWeight.bold,
-                                                        color: isModern ? Colors.white : Colors.black87,
-                                                      ),
+                                                            )
+                                                          : CachedNetworkImage(
+                                                              imageUrl: field.imageUrl!,
+                                                              fit: BoxFit.cover,
+                                                              placeholder: (_, __) => Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                                              errorWidget: (_, __, ___) => Image.asset(
+                                                                'lib/assets/images/san_bong.png',
+                                                                fit: BoxFit.cover,
+                                                              ),
+                                                            ),
                                                     ),
-                                                    const SizedBox(height: 4),
-                                                    Text(
-                                                      field.address ?? '',
-                                                      style: TextStyle(
-                                                        fontFamily: 'Roboto',
-                                                        fontSize: 14,
-                                                        color: isModern ? Colors.white54 : Colors.grey[600],
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 4),
-                                                    Row(
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
                                                       children: [
-                                                        const Icon(
-                                                          Icons.star,
-                                                          size: 16,
-                                                          color: Colors.yellow,
-                                                        ),
-                                                        const SizedBox(width: 4),
                                                         Text(
-                                                          field.rating != null
-                                                              ? (field.rating % 1 == 0
-                                                                  ? field.rating.toInt().toString()
-                                                                  : field.rating.toStringAsFixed(1))
-                                                              : '0',
+                                                          field.name,
                                                           style: TextStyle(
                                                             fontFamily: 'Roboto',
-                                                            color: isModern ? Colors.white70 : Colors.black87,
+                                                            fontSize: 16,
                                                             fontWeight: FontWeight.bold,
+                                                            color: isModern ? Colors.white : Colors.black87,
                                                           ),
                                                         ),
-                                                        const Spacer(),
+                                                        const SizedBox(height: 4),
+                                                        Text(
+                                                          field.address ?? '',
+                                                          style: TextStyle(
+                                                            fontFamily: 'Roboto',
+                                                            fontSize: 14,
+                                                            color: isModern ? Colors.white54 : Colors.grey[600],
+                                                          ),
+                                                        ),
+                                                        const SizedBox(height: 4),
                                                         Row(
-                                                          mainAxisSize: MainAxisSize.min,
                                                           children: [
-                                                            Icon(
-                                                              Icons.monetization_on,
-                                                              color: isModern ? themeProvider.accentColor : Colors.green[600],
+                                                            const Icon(
+                                                              Icons.star,
                                                               size: 16,
+                                                              color: Colors.yellow,
                                                             ),
-                                                            const SizedBox(width: 2),
+                                                            const SizedBox(width: 4),
                                                             Text(
-                                                              '${field.pricePerHour.toInt()} VNĐ/giờ',
+                                                              field.rating != null
+                                                                  ? (field.rating % 1 == 0
+                                                                      ? field.rating.toInt().toString()
+                                                                      : field.rating.toStringAsFixed(1))
+                                                                  : '0',
                                                               style: TextStyle(
                                                                 fontFamily: 'Roboto',
+                                                                color: isModern ? Colors.white70 : Colors.black87,
                                                                 fontWeight: FontWeight.bold,
-                                                                color: isModern ? themeProvider.accentColor : Colors.green[700],
                                                               ),
+                                                            ),
+                                                            const Spacer(),
+                                                            Row(
+                                                              mainAxisSize: MainAxisSize.min,
+                                                              children: [
+                                                                Icon(
+                                                                  Icons.monetization_on,
+                                                                  color: isModern ? themeProvider.accentColor : Colors.green[600],
+                                                                  size: 16,
+                                                                ),
+                                                                const SizedBox(width: 2),
+                                                                Text(
+                                                                  '${field.pricePerHour.toInt()} VNĐ/giờ',
+                                                                  style: TextStyle(
+                                                                    fontFamily: 'Roboto',
+                                                                    fontWeight: FontWeight.bold,
+                                                                    color: isModern ? themeProvider.accentColor : Colors.green[700],
+                                                                  ),
+                                                                ),
+                                                              ],
                                                             ),
                                                           ],
                                                         ),
                                                       ],
                                                     ),
-                                                  ],
-                                                ),
+                                                  ),
+                                                  Icon(
+                                                    field.available == true ? Icons.check_circle : Icons.cancel,
+                                                    color: field.available == true ? Colors.green : Colors.red,
+                                                  ),
+                                                ],
                                               ),
-                                              Icon(
-                                                field.available == true ? Icons.check_circle : Icons.cancel,
-                                                color: field.available == true ? Colors.green : Colors.red,
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
                   isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : currentPosition == null

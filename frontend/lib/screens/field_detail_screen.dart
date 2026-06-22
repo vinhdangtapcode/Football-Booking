@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/field.dart';
 import '../services/api_service.dart';
 import '../services/map_service.dart';
@@ -15,13 +16,52 @@ class _FieldDetailScreenState extends State<FieldDetailScreen> {
   Field? field;
   bool isFavorite = false;
   bool favLoading = false;
+  int _currentImageIndex = 0;
+  List<String> _galleryImages = [];
+  bool _hasInitialized = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final Field args = ModalRoute.of(context)!.settings.arguments as Field;
-    field = args;
-    checkFavorite();
+    if (!_hasInitialized) {
+      final Field args = ModalRoute.of(context)!.settings.arguments as Field;
+      field = args;
+      if (field!.imageUrls != null && field!.imageUrls!.isNotEmpty) {
+        _galleryImages = List<String>.from(field!.imageUrls!);
+      } else if (field!.imageUrl != null && field!.imageUrl!.isNotEmpty) {
+        _galleryImages = [field!.imageUrl!];
+      }
+      checkFavorite();
+      _loadFieldImages();
+      _hasInitialized = true;
+    }
+  }
+
+  Future<void> _loadFieldImages() async {
+    if (field?.id == null) return;
+    try {
+      final images = await ApiService.getFieldImages(field!.id!);
+      if (images.isNotEmpty) {
+        final resolvedUrls = images.map((img) => img['url'] as String).toList();
+        // Check if lists are equal before calling setState to avoid image flashing/recreation
+        bool isIdentical = _galleryImages.length == resolvedUrls.length;
+        if (isIdentical) {
+          for (int i = 0; i < _galleryImages.length; i++) {
+            if (_galleryImages[i] != resolvedUrls[i]) {
+              isIdentical = false;
+              break;
+            }
+          }
+        }
+        if (!isIdentical) {
+          setState(() {
+            _galleryImages = resolvedUrls;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading field images in detail screen: $e');
+    }
   }
 
   Future<void> checkFavorite() async {
@@ -191,7 +231,7 @@ class _FieldDetailScreenState extends State<FieldDetailScreen> {
             expandedHeight: 320,
             pinned: true,
             stretch: true,
-            backgroundColor: isModern ? const Color(0xFF0A0B0E) : Colors.amber,
+            backgroundColor: isModern ? const Color(0xFF0A0B0E) : Colors.black,
             foregroundColor: Colors.white,
             actions: [
               IconButton(
@@ -225,22 +265,69 @@ class _FieldDetailScreenState extends State<FieldDetailScreen> {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  (field!.imageUrl?.isNotEmpty ?? false)
-                      ? Image.network(field!.imageUrl!, fit: BoxFit.cover)
-                      : const Image(image: AssetImage('lib/assets/images/san_bong.png'), fit: BoxFit.cover),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.4),
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.85),
-                        ],
+                  _galleryImages.isNotEmpty
+                      ? PageView.builder(
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: _galleryImages.length,
+                          onPageChanged: (index) {
+                            setState(() {
+                              _currentImageIndex = index;
+                            });
+                          },
+                          itemBuilder: (context, index) {
+                            return CachedNetworkImage(
+                              imageUrl: _galleryImages[index],
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => Center(child: CircularProgressIndicator(color: Colors.white)),
+                              errorWidget: (_, __, ___) => const Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                            );
+                          },
+                        )
+                      : ((field!.imageUrl?.isNotEmpty ?? false)
+                          ? CachedNetworkImage(
+                              imageUrl: field!.imageUrl!,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => Center(child: CircularProgressIndicator(color: Colors.white)),
+                              errorWidget: (_, __, ___) => const Icon(Icons.broken_image, size: 50, color: Colors.grey),
+                            )
+                          : const Image(image: AssetImage('lib/assets/images/san_bong.png'), fit: BoxFit.cover)),
+                  IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.4),
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.85),
+                          ],
+                        ),
                       ),
                     ),
                   ),
+                  if (_galleryImages.length > 1)
+                    Positioned(
+                      bottom: 16,
+                      left: 16,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          _galleryImages.length,
+                          (index) => Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            width: _currentImageIndex == index ? 10 : 6,
+                            height: _currentImageIndex == index ? 10 : 6,
+                            decoration: BoxDecoration(
+                              color: _currentImageIndex == index
+                                  ? Colors.white
+                                  : Colors.white54,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   Positioned(
                     right: 16,
                     bottom: 16,

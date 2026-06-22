@@ -1,3 +1,5 @@
+import '../services/api_service.dart';
+
 class Owner {
   final int id;
   final String ownerName;
@@ -47,6 +49,7 @@ class Field {
   bool? outdoor;
   Owner? owner;
   String? imageUrl;
+  List<String>? imageUrls; // Danh sách URL ảnh (gallery)
   double? latitude;
   double? longitude;
   double? distance; // Khoảng cách từ vị trí hiện tại (km)
@@ -68,6 +71,7 @@ class Field {
     this.outdoor,
     this.owner,
     this.imageUrl,
+    this.imageUrls,
     this.latitude,
     this.longitude,
     this.distance,
@@ -92,7 +96,12 @@ class Field {
       available: json['available'] is bool ? json['available'] : (json['available'] == 1 || json['available'] == 'true'),
       outdoor: json['outdoor'] is bool ? json['outdoor'] : (json['outdoor'] == 1 || json['outdoor'] == 'true'),
       owner: json['owner'] != null ? Owner.fromJson(json['owner']) : null,
-      imageUrl: json['imageUrl'],
+      imageUrl: ApiService.resolveImageUrl(json['imageUrl']),
+      imageUrls: json['imageUrls'] != null
+          ? List<String>.from(json['imageUrls'])
+              .map((url) => ApiService.resolveImageUrl(url)!)
+              .toList()
+          : null,
       latitude: (json['latitude'] is num) ? json['latitude'].toDouble() : (json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null),
       longitude: (json['longitude'] is num) ? json['longitude'].toDouble() : (json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null),
     );
@@ -117,7 +126,6 @@ class Field {
       'available': available,
       'outdoor': outdoor,
       'owner': owner?.toJson(),
-      'imageUrl': imageUrl,
       'latitude': latitude,
       'longitude': longitude,
     };

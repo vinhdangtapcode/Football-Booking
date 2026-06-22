@@ -6,10 +6,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.footballfield.entity.Field;
 import vn.footballfield.entity.Owner;
+import vn.footballfield.entity.Conversation;
 import vn.footballfield.repository.BookingRepository;
 import vn.footballfield.repository.FavoriteRepository;
 import vn.footballfield.repository.FieldRepository;
 import vn.footballfield.repository.RatingRepository;
+import vn.footballfield.repository.FieldImageRepository;
+import vn.footballfield.repository.ConversationRepository;
 
 import javax.validation.Valid;
 import java.util.List;
@@ -29,6 +32,12 @@ public class FieldService {
 
 	@Autowired
 	private FavoriteRepository favoriteRepository;
+
+	@Autowired
+	private FieldImageRepository fieldImageRepository;
+
+	@Autowired
+	private ConversationRepository conversationRepository;
 
 	public List<Field> getAllFields() {
 		return fieldRepository.findAll();
@@ -59,6 +68,9 @@ public class FieldService {
 			// Không cập nhật owner: giữ nguyên chủ sở hữu của sân
 			updated.setAvailable(field.getAvailable());
 			updated.setOutdoor(field.getOutdoor());
+			if (field.getImageUrl() != null) {
+				updated.setImageUrl(field.getImageUrl());
+			}
 			return fieldRepository.save(updated);
 		}
 		return null;
@@ -74,16 +86,26 @@ public class FieldService {
 
 		// Delete all related records first to avoid foreign key constraint violations
 
-		// 1. Delete all bookings for this field
+		// 1. Detach all conversations referencing this field to prevent foreign key constraint violations
+		List<Conversation> conversations = conversationRepository.findByFieldId(id);
+		for (Conversation conversation : conversations) {
+			conversation.setField(null);
+		}
+		conversationRepository.saveAll(conversations);
+
+		// 2. Delete all field images
+		fieldImageRepository.deleteByFieldId(id);
+
+		// 3. Delete all bookings for this field
 		bookingRepository.deleteAll(bookingRepository.findByField_Id(id));
 
-		// 2. Delete all ratings for this field
+		// 4. Delete all ratings for this field
 		ratingRepository.deleteAll(ratingRepository.findByFieldId(id));
 
-		// 3. Delete all favorites for this field
+		// 5. Delete all favorites for this field
 		favoriteRepository.deleteAll(favoriteRepository.findByField_Id(id));
 
-		// 4. Finally, delete the field
+		// 6. Finally, delete the field
 		fieldRepository.deleteById(id);
 	}
 
