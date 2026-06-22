@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import '../models/field.dart';
 import '../services/api_service.dart';
+import '../services/theme_service.dart';
 
 class BookingScreen extends StatefulWidget {
   @override
@@ -289,16 +291,41 @@ class _BookingScreenState extends State<BookingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isModern = themeProvider.isModernMode;
+
     if (field == null) {
-      return Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        backgroundColor: isModern ? const Color(0xFF0A0B0E) : Colors.white,
+        body: Center(
+          child: CircularProgressIndicator(color: isModern ? Colors.white : Colors.amber),
+        ),
+      );
     }
 
     return Scaffold(
+      backgroundColor: isModern ? const Color(0xFF0A0B0E) : Colors.white,
       appBar: AppBar(
-        title: Text("Đặt sân", style: const TextStyle(fontFamily: 'Roboto', fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+        title: Text(
+          "Đặt sân",
+          style: TextStyle(
+            fontFamily: 'Roboto',
+            fontWeight: FontWeight.bold,
+            color: isModern ? Colors.white : Colors.black,
+          ),
+          textAlign: TextAlign.center,
+        ),
         centerTitle: true,
-        backgroundColor: Colors.amber,
+        backgroundColor: isModern ? const Color(0xFF0A0B0E) : Colors.amber,
+        foregroundColor: isModern ? Colors.white : Colors.black,
         elevation: 0,
+        actions: [
+          if (isModern)
+            IconButton(
+              icon: const Icon(Icons.info_outline),
+              onPressed: () {},
+            )
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -308,8 +335,12 @@ class _BookingScreenState extends State<BookingScreen> {
             children: [
               // Card thông tin sân
               Card(
+                color: isModern ? const Color(0xFF16181D) : Colors.white,
                 elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: isModern ? const BorderSide(color: Colors.white24) : BorderSide.none,
+                ),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                   child: Column(
@@ -317,12 +348,17 @@ class _BookingScreenState extends State<BookingScreen> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.sports_soccer, color: Colors.amber[800]),
+                          Icon(Icons.sports_soccer, color: isModern ? const Color(0xFF00E676) : Colors.amber[800]),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               field!.name,
-                              style: const TextStyle(fontFamily: 'Roboto', fontWeight: FontWeight.bold, fontSize: 18),
+                              style: TextStyle(
+                                fontFamily: 'Roboto',
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: isModern ? Colors.white : Colors.black,
+                              ),
                             ),
                           ),
                         ],
@@ -330,12 +366,16 @@ class _BookingScreenState extends State<BookingScreen> {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Icon(Icons.location_on, color: Colors.redAccent, size: 18),
+                          const Icon(Icons.location_on, color: Colors.redAccent, size: 18),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               field!.address,
-                              style: const TextStyle(fontFamily: 'Roboto', fontSize: 14, color: Colors.black54),
+                              style: TextStyle(
+                                fontFamily: 'Roboto',
+                                fontSize: 14,
+                                color: isModern ? Colors.white70 : Colors.black54,
+                              ),
                             ),
                           ),
                         ],
@@ -343,15 +383,15 @@ class _BookingScreenState extends State<BookingScreen> {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Icon(Icons.attach_money, color: Colors.green, size: 18),
+                          const Icon(Icons.attach_money, color: Colors.green, size: 18),
                           const SizedBox(width: 4),
                           Text(
                             'Giá: ',
-                            style: TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Roboto'),
+                            style: TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Roboto', color: isModern ? Colors.white : Colors.black),
                           ),
                           Text(
                             '${field!.pricePerHour.toInt()} VNĐ/giờ',
-                            style: TextStyle(fontFamily: 'Roboto', color: Colors.black87),
+                            style: TextStyle(fontFamily: 'Roboto', color: isModern ? Colors.white70 : Colors.black87),
                           ),
                         ],
                       ),
@@ -359,35 +399,58 @@ class _BookingScreenState extends State<BookingScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 12),
               
               // Chọn ngày
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: ListTile(
-                  leading: Icon(Icons.calendar_today, color: Colors.amber[800]),
-                  title: Text("Ngày đặt sân", style: TextStyle(fontFamily: 'Roboto', fontWeight: FontWeight.w500)),
-                  subtitle: Text(
-                    "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
-                    style: TextStyle(fontFamily: 'Roboto', fontSize: 16, fontWeight: FontWeight.bold),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Chọn ngày đặt sân",
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: isModern ? Colors.white : Colors.black,
+                    ),
                   ),
-                  onTap: () => _selectDate(context),
-                  trailing: Icon(Icons.edit_calendar, color: Colors.amber[800]),
-                ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.calendar_month,
+                      color: isModern ? const Color(0xFF00E676) : Colors.amber[800],
+                      size: 20,
+                    ),
+                    onPressed: () => _selectDate(context),
+                    tooltip: 'Chọn ngày bất kỳ',
+                    constraints: const BoxConstraints(),
+                    padding: EdgeInsets.zero,
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
+              HorizontalCalendar(
+                selectedDate: selectedDate,
+                isModern: isModern,
+                onDateSelected: (date) {
+                  setState(() {
+                    selectedDate = date;
+                    selectedSlots.clear();
+                  });
+                  _fetchBookedTimes();
+                },
+              ),
+              const SizedBox(height: 16),
               
               // Tiêu đề chọn khung giờ
               Text(
                 "Chọn khung giờ",
-                style: TextStyle(fontFamily: 'Roboto', fontWeight: FontWeight.bold, fontSize: 16),
+                style: TextStyle(fontFamily: 'Roboto', fontWeight: FontWeight.bold, fontSize: 16, color: isModern ? Colors.white : Colors.black),
               ),
               Text(
                 "Nhấn để chọn/bỏ chọn khung giờ.",
-                style: TextStyle(fontFamily: 'Roboto', fontSize: 12, color: Colors.black54),
+                style: TextStyle(fontFamily: 'Roboto', fontSize: 12, color: isModern ? Colors.white54 : Colors.black54),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               
               // Grid chọn khung giờ
               TimeSlotGrid(
@@ -396,45 +459,61 @@ class _BookingScreenState extends State<BookingScreen> {
                 selectedSlots: selectedSlots,
                 isSlotBooked: isSlotBooked,
                 onSlotTap: _toggleSlot,
+                isModern: isModern,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               
               // Chú thích
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
                 children: [
-                  _buildLegend(Colors.red[400]!, 'Đã đặt'),
-                  const SizedBox(width: 16),
-                  _buildLegend(Colors.amber[600]!, 'Đang chọn'),
-                  const SizedBox(width: 16),
-                  _buildLegend(Colors.grey[300]!, 'Còn trống'),
+                  _buildLegend(isModern ? Colors.red[900]!.withValues(alpha: 0.5) : Colors.red[400]!, 'Đã đặt', isModern),
+                  _buildLegend(isModern ? Colors.white : Colors.amber[600]!, 'Đang chọn', isModern),
+                  _buildLegend(isModern ? const Color(0xFF1A1A1A) : Colors.grey[200]!, 'Còn trống', isModern),
+                  _buildLegend(isModern ? const Color(0xFF231709) : Colors.orange.shade50, 'Giờ vàng 🔥', isModern),
                 ],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 16),
               
               // Yêu cầu bổ sung
               TextFormField(
                 controller: additionalController,
-                style: TextStyle(fontSize: 14, fontFamily: 'Roboto'),
+                style: TextStyle(fontSize: 14, fontFamily: 'Roboto', color: isModern ? Colors.white : Colors.black),
                 decoration: InputDecoration(
                   labelText: "Yêu cầu bổ sung (nếu có)",
-                  labelStyle: TextStyle(fontSize: 14),
-                  prefixIcon: Icon(Icons.note_add, color: Colors.amber, size: 20),
-                  contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                  labelStyle: TextStyle(fontSize: 14, color: isModern ? Colors.white70 : null),
+                  prefixIcon: Icon(Icons.note_add, color: isModern ? const Color(0xFF00E676) : Colors.amber, size: 20),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   filled: true,
-                  fillColor: Colors.amber[50],
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  fillColor: isModern ? const Color(0xFF1A1A1A) : Colors.amber[50],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: isModern ? const BorderSide(color: Colors.white24) : BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: isModern ? const BorderSide(color: Colors.white12) : BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: isModern ? const Color(0xFF00E676) : Colors.amber),
+                  ),
                   isDense: true,
                 ),
                 maxLines: 1,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 12),
               
               // Thông tin đặt sân
               Card(
-                color: Colors.amber[50],
+                color: isModern ? const Color(0xFF16181D) : Colors.amber[50],
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: isModern ? const BorderSide(color: Colors.white24) : BorderSide.none,
+                ),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                   child: Column(
@@ -442,10 +521,10 @@ class _BookingScreenState extends State<BookingScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Khung giờ đã chọn:', style: TextStyle(fontFamily: 'Roboto', color: Colors.black54)),
+                          Text('Khung giờ đã chọn:', style: TextStyle(fontFamily: 'Roboto', color: isModern ? Colors.white54 : Colors.black54)),
                           Text(
-                            _formatSelectedSlots(),
-                            style: TextStyle(fontFamily: 'Roboto', fontWeight: FontWeight.bold, color: Colors.amber[900]),
+                            selectedSlots.isEmpty ? '-' : _formatSelectedSlots(),
+                            style: TextStyle(fontFamily: 'Roboto', fontWeight: FontWeight.bold, color: isModern ? Colors.white : Colors.amber[900]),
                           ),
                         ],
                       ),
@@ -456,22 +535,35 @@ class _BookingScreenState extends State<BookingScreen> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Số giờ', style: TextStyle(fontFamily: 'Roboto', color: Colors.black54)),
+                              Text('Số giờ', style: TextStyle(fontFamily: 'Roboto', color: isModern ? Colors.white54 : Colors.black54)),
                               const SizedBox(height: 4),
                               Text(
                                 selectedHoursCount > 0 ? '$selectedHoursCount giờ' : '-',
-                                style: TextStyle(fontFamily: 'Roboto', fontWeight: FontWeight.bold, fontSize: 18, color: Colors.amber[900]),
+                                style: TextStyle(fontFamily: 'Roboto', fontWeight: FontWeight.bold, fontSize: 18, color: isModern ? Colors.white : Colors.amber[900]),
                               ),
                             ],
                           ),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text('Tổng tiền', style: TextStyle(fontFamily: 'Roboto', color: Colors.black54)),
+                              Text('Tổng tiền', style: TextStyle(fontFamily: 'Roboto', color: isModern ? Colors.white54 : Colors.black54)),
                               const SizedBox(height: 4),
-                              Text(
-                                totalPrice > 0 ? '${totalPrice} VNĐ' : '-',
-                                style: TextStyle(fontFamily: 'Roboto', fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green[800]),
+                              TweenAnimationBuilder<double>(
+                                duration: const Duration(milliseconds: 350),
+                                curve: Curves.easeOutCubic,
+                                tween: Tween<double>(begin: 0, end: totalPrice.toDouble()),
+                                builder: (context, value, child) {
+                                  final intPrice = value.round();
+                                  return Text(
+                                    intPrice > 0 ? '$intPrice VNĐ' : '-',
+                                    style: TextStyle(
+                                      fontFamily: 'Roboto',
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                      color: isModern ? const Color(0xFF00E676) : Colors.green[800],
+                                    ),
+                                  );
+                                },
                               ),
                             ],
                           ),
@@ -481,25 +573,25 @@ class _BookingScreenState extends State<BookingScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               
               // Nút xác nhận
               Center(
                 child: isLoading
-                    ? CircularProgressIndicator()
+                    ? CircularProgressIndicator(color: isModern ? Colors.white : Colors.amber)
                     : SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: selectedSlots.isEmpty ? null : confirmBooking,
-                          icon: Icon(Icons.check_circle, color: Colors.white),
-                          label: Text(
+                          icon: Icon(Icons.check_circle, color: isModern ? Colors.black : Colors.white),
+                          label: const Text(
                             "Xác nhận đặt sân",
                             style: TextStyle(fontSize: 16, fontFamily: 'Roboto', fontWeight: FontWeight.bold),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.amber[800],
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor: Colors.grey[400],
+                            backgroundColor: isModern ? Colors.white : Colors.amber[800],
+                            foregroundColor: isModern ? Colors.black : Colors.white,
+                            disabledBackgroundColor: isModern ? Colors.white12 : Colors.grey[400],
                             padding: const EdgeInsets.symmetric(vertical: 18),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                           ),
@@ -513,19 +605,28 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
-  Widget _buildLegend(Color color, String text) {
+  Widget _buildLegend(Color color, String text, bool isModern) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 16,
-          height: 16,
+          width: 14,
+          height: 14,
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(4),
+            border: isModern ? Border.all(color: Colors.white24, width: 0.5) : Border.all(color: Colors.black12, width: 0.5),
           ),
         ),
-        const SizedBox(width: 4),
-        Text(text, style: TextStyle(fontSize: 12, fontFamily: 'Roboto')),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 11,
+            fontFamily: 'Roboto',
+            color: isModern ? Colors.white70 : Colors.black87,
+          ),
+        ),
       ],
     );
   }
@@ -544,6 +645,7 @@ class TimeSlotGrid extends StatelessWidget {
   final Set<int> selectedSlots;
   final bool Function(int) isSlotBooked;
   final void Function(int) onSlotTap;
+  final bool isModern;
 
   const TimeSlotGrid({
     required this.openingHour,
@@ -551,6 +653,7 @@ class TimeSlotGrid extends StatelessWidget {
     required this.selectedSlots,
     required this.isSlotBooked,
     required this.onSlotTap,
+    this.isModern = false,
   });
 
   @override
@@ -560,10 +663,10 @@ class TimeSlotGrid extends StatelessWidget {
     
     return GridView.builder(
       shrinkWrap: true,
-      physics: NeverScrollableScrollPhysics(),
+      physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
-        childAspectRatio: 2.2,
+        childAspectRatio: 2.1,
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
       ),
@@ -578,6 +681,7 @@ class TimeSlotGrid extends StatelessWidget {
           isBooked: booked,
           isSelected: selected,
           onTap: () => onSlotTap(hour),
+          isModern: isModern,
         );
       },
     );
@@ -589,12 +693,14 @@ class _TimeSlotButton extends StatelessWidget {
   final bool isBooked;
   final bool isSelected;
   final VoidCallback onTap;
+  final bool isModern;
 
   const _TimeSlotButton({
     required this.hour,
     required this.isBooked,
     required this.isSelected,
     required this.onTap,
+    this.isModern = false,
   });
 
   @override
@@ -603,18 +709,32 @@ class _TimeSlotButton extends StatelessWidget {
     Color textColor;
     Color borderColor;
 
+    final bool isGoldHour = hour >= 17 && hour < 20;
+
     if (isBooked) {
-      backgroundColor = Colors.red[400]!;
+      backgroundColor = isModern ? Colors.red[900]!.withValues(alpha: 0.5) : Colors.red[400]!;
       textColor = Colors.white;
-      borderColor = Colors.red[600]!;
+      borderColor = isModern ? Colors.red : Colors.red[600]!;
     } else if (isSelected) {
-      backgroundColor = Colors.amber[600]!;
-      textColor = Colors.white;
-      borderColor = Colors.amber[800]!;
+      if (isGoldHour) {
+        backgroundColor = isModern ? const Color(0xFFFFB300) : Colors.orange[700]!;
+        textColor = isModern ? Colors.black : Colors.white;
+        borderColor = isModern ? const Color(0xFFFFD54F) : Colors.orange[800]!;
+      } else {
+        backgroundColor = isModern ? Colors.white : Colors.amber[600]!;
+        textColor = isModern ? Colors.black : Colors.white;
+        borderColor = isModern ? Colors.white : Colors.amber[800]!;
+      }
     } else {
-      backgroundColor = Colors.grey[200]!;
-      textColor = Colors.black87;
-      borderColor = Colors.grey[400]!;
+      if (isGoldHour) {
+        backgroundColor = isModern ? const Color(0xFF231709) : Colors.orange.shade50;
+        textColor = isModern ? const Color(0xFFFF9100) : Colors.orange.shade900;
+        borderColor = isModern ? const Color(0xFFFF9100).withValues(alpha: 0.4) : Colors.orange.shade300;
+      } else {
+        backgroundColor = isModern ? const Color(0xFF1A1A1A) : Colors.grey[200]!;
+        textColor = isModern ? Colors.white70 : Colors.black87;
+        borderColor = isModern ? Colors.white12 : Colors.grey[400]!;
+      }
     }
 
     String timeLabel = '${hour.toString().padLeft(2, '0')}:00 - ${(hour + 1).toString().padLeft(2, '0')}:00';
@@ -625,35 +745,159 @@ class _TimeSlotButton extends StatelessWidget {
         onTap: isBooked ? null : onTap,
         borderRadius: BorderRadius.circular(12),
         child: AnimatedContainer(
-          duration: Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
             color: backgroundColor,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: borderColor, width: 1.5),
-            boxShadow: isSelected
+            border: Border.all(color: borderColor, width: isModern ? 0.5 : 1.5),
+            boxShadow: (isSelected && !isModern)
                 ? [
                     BoxShadow(
-                      color: Colors.amber.withOpacity(0.4),
+                      color: Colors.amber.withValues(alpha: 0.4),
                       blurRadius: 8,
-                      offset: Offset(0, 2),
+                      offset: const Offset(0, 2),
                     )
                   ]
                 : null,
           ),
           child: Center(
-            child: Text(
-              timeLabel,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                fontFamily: 'Roboto',
-                color: textColor,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (isGoldHour && !isBooked)
+                      const Text('🔥 ', style: TextStyle(fontSize: 11)),
+                    Text(
+                      timeLabel,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        fontFamily: 'Roboto',
+                        color: textColor,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
-              textAlign: TextAlign.center,
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+class HorizontalCalendar extends StatelessWidget {
+  final DateTime selectedDate;
+  final ValueChanged<DateTime> onDateSelected;
+  final bool isModern;
+
+  const HorizontalCalendar({
+    required this.selectedDate,
+    required this.onDateSelected,
+    this.isModern = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final today = DateTime.now();
+    return SizedBox(
+      height: 75,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: 14,
+        itemBuilder: (context, index) {
+          final date = today.add(Duration(days: index));
+          final isSelected = date.year == selectedDate.year &&
+              date.month == selectedDate.month &&
+              date.day == selectedDate.day;
+
+          // Format day of week and day number
+          final dayOfWeek = _getDayOfWeekName(date.weekday);
+          final dayNumber = date.day.toString();
+
+          return GestureDetector(
+            onTap: () => onDateSelected(date),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 54,
+              margin: const EdgeInsets.only(right: 10, top: 4, bottom: 4),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? (isModern ? Colors.white : Colors.amber.shade700)
+                    : (isModern ? const Color(0xFF16181D) : Colors.grey.shade100),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected
+                      ? (isModern ? Colors.white : Colors.amber.shade800)
+                      : (isModern ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade300),
+                  width: isSelected ? 1.5 : 1,
+                ),
+                boxShadow: isSelected && !isModern
+                    ? [
+                        BoxShadow(
+                          color: Colors.amber.withValues(alpha: 0.3),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3),
+                        )
+                      ]
+                    : [],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    dayOfWeek,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected
+                          ? (isModern ? Colors.black : Colors.white)
+                          : (isModern ? Colors.white54 : Colors.grey.shade600),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    dayNumber,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: isSelected
+                          ? (isModern ? Colors.black : Colors.white)
+                          : (isModern ? Colors.white : Colors.black87),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  String _getDayOfWeekName(int weekday) {
+    switch (weekday) {
+      case 1:
+        return 'T2';
+      case 2:
+        return 'T3';
+      case 3:
+        return 'T4';
+      case 4:
+        return 'T5';
+      case 5:
+        return 'T6';
+      case 6:
+        return 'T7';
+      case 7:
+        return 'CN';
+      default:
+        return '';
+    }
   }
 }

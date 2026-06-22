@@ -25,3 +25,15 @@ target/
 .env.local
 .env.*.local
 
+# Sensitive config (chứa credentials)
+backend/src/main/resources/application.properties
+backend/src/main/resources/firebase-service-account.json
+
+# Docker
+docker-compose.override.yml
+
+# Backups
+backups/
+*.sql
+*.sql.gz
+

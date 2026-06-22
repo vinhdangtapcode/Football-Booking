@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/field.dart';
 import '../services/api_service.dart';
+import '../services/theme_service.dart';
 
 class FavoritesScreen extends StatefulWidget {
   @override
@@ -34,11 +36,16 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   Widget buildFavoriteItem(Field field) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isModern = themeProvider.isModernMode;
+
     return Card(
-      elevation: 4,
+      color: isModern ? Color(0xFF121212) : null,
+      elevation: isModern ? 1 : 4,
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
+        side: isModern ? BorderSide(color: Colors.white10) : BorderSide.none,
       ),
       child: InkWell(
         onTap: () {
@@ -80,7 +87,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
-                        color: Colors.amber[800],
+                        color: isModern ? Colors.white : Colors.amber[800],
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -88,12 +95,12 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        Icon(Icons.location_on, color: Colors.amber[600], size: 16),
+                        Icon(Icons.location_on, color: isModern ? Colors.white70 : Colors.amber[600], size: 16),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             field.address,
-                            style: TextStyle(color: Colors.grey[700], fontSize: 14),
+                            style: TextStyle(color: isModern ? Colors.white70 : Colors.grey[700], fontSize: 14),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -119,7 +126,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                   '${field.rating?.toStringAsFixed(1) ?? 'N/A'}',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.amber[800],
+                                    color: isModern ? Colors.amber[400] : Colors.amber[800],
                                     fontSize: 12,
                                   ),
                                   overflow: TextOverflow.ellipsis,
@@ -134,13 +141,13 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.monetization_on, color: Colors.green[600], size: 14),
+                              Icon(Icons.monetization_on, color: isModern ? Colors.white70 : Colors.green[600], size: 14),
                               const SizedBox(width: 2),
                               Flexible(
                                 child: Text(
                                   field.pricePerHour.toStringAsFixed(0),
                                   style: TextStyle(
-                                    color: Colors.green[700],
+                                    color: isModern ? Colors.white70 : Colors.green[700],
                                     fontWeight: FontWeight.w500,
                                     fontSize: 12,
                                   ),
@@ -161,12 +168,14 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: Text('Xác nhận'),
-                      content: Text('Bạn có muốn xóa sân này khỏi danh sách yêu thích không?'),
+                      backgroundColor: isModern ? Color(0xFF121212) : null,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      title: Text('Xác nhận', style: TextStyle(color: isModern ? Colors.white : null)),
+                      content: Text('Bạn có muốn xóa sân này khỏi danh sách yêu thích không?', style: TextStyle(color: isModern ? Colors.white70 : null)),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: Text('Hủy'),
+                          child: Text('Hủy', style: TextStyle(color: isModern ? Colors.white70 : null)),
                         ),
                         TextButton(
                           onPressed: () {
@@ -190,36 +199,39 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isModern = themeProvider.isModernMode;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
           "Sân yêu thích",
         ),
-        backgroundColor: Colors.amberAccent,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         elevation: 0,
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: Colors.amber[900]),
+            icon: Icon(Icons.refresh, color: isModern ? Colors.white : Colors.amber[900]),
             onPressed: fetchFavorites,
             tooltip: 'Làm mới',
           ),
         ],
       ),
-      backgroundColor: Colors.grey[100],
+      backgroundColor: isModern ? Colors.black : Colors.grey[100],
       body: isLoading
-          ? Center(child: CircularProgressIndicator(color: Colors.amber))
+          ? Center(child: CircularProgressIndicator(color: isModern ? Colors.white : Colors.amber))
           : favoriteFields.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.favorite_border, size: 80, color: Colors.amber[300]),
+                      Icon(Icons.favorite_border, size: 80, color: isModern ? Colors.white24 : Colors.amber[300]),
                       SizedBox(height: 16),
                       Text(
                         "Bạn chưa có sân yêu thích nào!",
                         style: TextStyle(
                           fontSize: 18,
-                          color: Colors.amber[800],
+                          color: isModern ? Colors.white : Colors.amber[800],
                           fontWeight: FontWeight.bold
                         ),
                       ),
@@ -228,7 +240,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         "Hãy thêm sân yêu thích từ màn hình chi tiết sân",
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[700],
+                          color: isModern ? Colors.white70 : Colors.grey[700],
                         ),
                       ),
                     ],

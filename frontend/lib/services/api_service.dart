@@ -7,6 +7,9 @@ import '../models/booking.dart';
 import '../models/rating.dart';
 import '../models/favorite.dart';
 
+// Sử dụng http://10.0.2.2:8080 để kết nối local backend từ Android Emulator
+// Sử dụng http://localhost:8080 nếu chạy iOS Emulator hoặc Web
+// Sử dụng http://178.128.62.29:8080 để kết nối lên cloud server
 const String baseUrl = "http://178.128.62.29:8080";
 
 class ApiService {

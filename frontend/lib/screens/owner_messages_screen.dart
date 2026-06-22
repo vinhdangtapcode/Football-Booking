@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/conversation.dart';
 import '../services/api_service.dart';
+import '../services/theme_service.dart';
 
 class OwnerMessagesScreen extends StatefulWidget {
   @override
@@ -97,40 +99,46 @@ class _OwnerMessagesScreenState extends State<OwnerMessagesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isModern = themeProvider.isModernMode;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Tin nhắn từ khách hàng', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.amber,
+        title: Text('Tin nhắn', style: TextStyle(fontWeight: FontWeight.bold, color: isModern ? Colors.white : Colors.black)),
+        backgroundColor: isModern ? Colors.black : Colors.amberAccent,
         elevation: 0,
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh),
+            icon: Icon(Icons.refresh, color: isModern ? Colors.white : Colors.black),
             onPressed: _loadConversations,
             tooltip: 'Làm mới',
           ),
         ],
       ),
+      backgroundColor: isModern ? Colors.black : null,
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
+          color: isModern ? Colors.black : null,
+          gradient: isModern ? null : LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [Colors.amber.shade50, Colors.white],
           ),
         ),
         child: isLoading
-            ? Center(child: CircularProgressIndicator(color: Colors.amber))
+            ? Center(child: CircularProgressIndicator(color: isModern ? Colors.white : Colors.amber))
             : conversations.isEmpty
-                ? _buildEmptyState()
+                ? _buildEmptyState(isModern)
                 : RefreshIndicator(
                     onRefresh: _loadConversations,
-                    color: Colors.amber,
+                    color: isModern ? Colors.black : Colors.amber,
+                    backgroundColor: isModern ? Colors.white : null,
                     child: ListView.builder(
                       padding: EdgeInsets.symmetric(vertical: 8),
                       itemCount: conversations.length,
                       itemBuilder: (context, index) {
-                        return _buildConversationItem(conversations[index]);
+                        return _buildConversationItem(conversations[index], isModern);
                       },
                     ),
                   ),
@@ -138,7 +146,7 @@ class _OwnerMessagesScreenState extends State<OwnerMessagesScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(bool isModern) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -146,43 +154,44 @@ class _OwnerMessagesScreenState extends State<OwnerMessagesScreen> {
           Container(
             padding: EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.amber.shade50,
+              color: isModern ? Colors.white10 : Colors.amber.shade50,
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.chat_bubble_outline, size: 80, color: Colors.amber.shade300),
+            child: Icon(Icons.chat_bubble_outline, size: 80, color: isModern ? Colors.white30 : Colors.amber.shade300),
           ),
           SizedBox(height: 24),
           Text(
             'Chưa có tin nhắn',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey[700]),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isModern ? Colors.white : Colors.grey[700]),
           ),
           SizedBox(height: 8),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              'Khi khách hàng nhắn tin cho bạn,\ntin nhắn sẽ xuất hiện ở đây',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-              textAlign: TextAlign.center,
-            ),
+          Text(
+            'Khách hàng sẽ liên hệ với bạn\nđể hỏi thêm thông tin về sân',
+            style: TextStyle(fontSize: 14, color: isModern ? Colors.white54 : Colors.grey[500]),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildConversationItem(Conversation conversation) {
-    final userName = conversation.userName ?? 'Khách hàng';
+  Widget _buildConversationItem(Conversation conversation, bool isModern) {
+    final userName = conversation.userName ?? 'Khách';
     final hasUnread = conversation.unreadCount > 0;
 
     return Card(
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      elevation: hasUnread ? 4 : 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: isModern ? 0 : (hasUnread ? 4 : 1),
+      color: isModern ? Color(0xFF121212) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: isModern ? BorderSide(color: hasUnread ? Colors.white : Colors.white24) : BorderSide.none,
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () => _openChat(conversation),
         child: Container(
-          decoration: hasUnread ? BoxDecoration(
+          decoration: (!isModern && hasUnread) ? BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.amber.shade300, width: 2),
           ) : null,
@@ -197,27 +206,19 @@ class _OwnerMessagesScreenState extends State<OwnerMessagesScreen> {
                       width: 56,
                       height: 56,
                       decoration: BoxDecoration(
-                        color: Colors.amber.shade100,
+                        color: isModern ? Colors.white12 : Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(28),
-                        image: conversation.userPictureUrl != null
-                            ? DecorationImage(
-                                image: NetworkImage(conversation.userPictureUrl!),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
                       ),
-                      child: conversation.userPictureUrl == null
-                          ? Center(
-                              child: Text(
-                                userName.isNotEmpty ? userName[0].toUpperCase() : '?',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.amber.shade800,
-                                ),
-                              ),
-                            )
-                          : null,
+                      child: Center(
+                        child: Text(
+                          userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: isModern ? Colors.white : Colors.blue.shade700,
+                          ),
+                        ),
+                      ),
                     ),
                     if (hasUnread)
                       Positioned(
@@ -227,9 +228,9 @@ class _OwnerMessagesScreenState extends State<OwnerMessagesScreen> {
                           width: 16,
                           height: 16,
                           decoration: BoxDecoration(
-                            color: Colors.green,
+                            color: isModern ? Colors.white : Colors.green,
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
+                            border: Border.all(color: isModern ? Colors.black : Colors.white, width: 2),
                           ),
                         ),
                       ),
@@ -250,6 +251,7 @@ class _OwnerMessagesScreenState extends State<OwnerMessagesScreen> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: hasUnread ? FontWeight.bold : FontWeight.w500,
+                                color: isModern ? Colors.white : Colors.black87,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -260,7 +262,7 @@ class _OwnerMessagesScreenState extends State<OwnerMessagesScreen> {
                               _formatTime(conversation.lastMessageTime!),
                               style: TextStyle(
                                 fontSize: 12,
-                                color: hasUnread ? Colors.amber.shade800 : Colors.grey[500],
+                                color: isModern ? (hasUnread ? Colors.white : Colors.white54) : (hasUnread ? Colors.amber.shade800 : Colors.grey[500]),
                                 fontWeight: hasUnread ? FontWeight.bold : FontWeight.normal,
                               ),
                             ),
@@ -270,12 +272,12 @@ class _OwnerMessagesScreenState extends State<OwnerMessagesScreen> {
                       if (conversation.fieldName != null)
                         Row(
                           children: [
-                            Icon(Icons.sports_soccer, size: 14, color: Colors.grey[500]),
+                            Icon(Icons.sports_soccer, size: 14, color: isModern ? Colors.white54 : Colors.grey[500]),
                             SizedBox(width: 4),
                             Expanded(
                               child: Text(
                                 conversation.fieldName!,
-                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                style: TextStyle(fontSize: 12, color: isModern ? Colors.white54 : Colors.grey[600]),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -290,7 +292,7 @@ class _OwnerMessagesScreenState extends State<OwnerMessagesScreen> {
                               conversation.lastMessage ?? 'Bắt đầu cuộc hội thoại...',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: hasUnread ? Colors.black87 : Colors.grey[600],
+                                color: isModern ? (hasUnread ? Colors.white : Colors.white70) : (hasUnread ? Colors.black87 : Colors.grey[600]),
                                 fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
                               ),
                               maxLines: 1,
@@ -301,14 +303,14 @@ class _OwnerMessagesScreenState extends State<OwnerMessagesScreen> {
                             Container(
                               padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.amber,
+                                color: isModern ? Colors.white : Colors.amberAccent,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
-                                conversation.unreadCount.toString(),
+                                '${conversation.unreadCount}',
                                 style: TextStyle(
+                                  color: Colors.black,
                                   fontSize: 12,
-                                  color: Colors.white,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -318,9 +320,6 @@ class _OwnerMessagesScreenState extends State<OwnerMessagesScreen> {
                     ],
                   ),
                 ),
-                
-                // Arrow
-                Icon(Icons.chevron_right, color: Colors.grey[400]),
               ],
             ),
           ),

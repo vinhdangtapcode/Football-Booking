@@ -7,6 +7,8 @@ import 'user_messages_screen.dart';
 import 'notifications_screen.dart';
 import 'settings_screen.dart';
 import '../services/api_service.dart';
+import '../services/theme_service.dart';
+import 'package:provider/provider.dart';
 import '../main.dart'; // Import để sử dụng routeObserver
 
 class MainTabScaffold extends StatefulWidget {
@@ -183,6 +185,9 @@ class _MainTabScaffoldState extends State<MainTabScaffold> with WidgetsBindingOb
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isModern = themeProvider.isModernMode;
+
     return Scaffold(
       body: KeyedSubtree(
         key: ValueKey(_currentIndex),
@@ -191,9 +196,9 @@ class _MainTabScaffoldState extends State<MainTabScaffold> with WidgetsBindingOb
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: Colors.amber,
-        unselectedItemColor: Colors.grey,
+        backgroundColor: isModern ? Colors.black : Colors.white,
+        selectedItemColor: isModern ? Colors.white : Colors.amber,
+        unselectedItemColor: isModern ? Colors.white38 : Colors.grey,
         onTap: _onTabTapped,
         items: [
           const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang chủ'),

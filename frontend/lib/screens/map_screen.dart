@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:provider/provider.dart';
 import '../models/field.dart';
 import '../services/map_service.dart';
+import '../services/theme_service.dart';
 
 class MapScreen extends StatefulWidget {
   final Field field;
@@ -128,11 +130,13 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _openDirections() async {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isModern = themeProvider.isModernMode;
     try {
       // Hiển thị loading indicator
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Row(
+        SnackBar(
+          content: const Row(
             children: [
               SizedBox(
                 width: 20,
@@ -146,8 +150,8 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
               Text('Đang mở Google Maps...'),
             ],
           ),
-          duration: Duration(seconds: 2),
-          backgroundColor: Colors.amber,
+          duration: const Duration(seconds: 2),
+          backgroundColor: isModern ? Colors.grey[900] : Colors.amber,
         ),
       );
 
@@ -195,28 +199,32 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isModern = themeProvider.isModernMode;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
           'Bản đồ',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Colors.black54,
+            color: isModern ? Colors.white : Colors.black54,
           ),
         ),
-        backgroundColor: Colors.amberAccent,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         elevation: 0,
         actions: [
           IconButton(
-            icon: Icon(Icons.directions, color: Colors.amber[900]),
+            icon: Icon(Icons.directions, color: isModern ? Colors.white : Colors.amber[900]),
             onPressed: _openDirections,
             tooltip: 'Chỉ đường',
           ),
         ],
       ),
+      backgroundColor: isModern ? Colors.black : null,
       body: isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Colors.amber),
+          ? Center(
+              child: CircularProgressIndicator(color: isModern ? Colors.white : Colors.amber),
             )
           : errorMessage != null
               ? Center(
@@ -227,14 +235,15 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       const SizedBox(height: 16),
                       Text(
                         errorMessage!,
-                        style: const TextStyle(fontSize: 16),
+                        style: TextStyle(fontSize: 16, color: isModern ? Colors.white70 : null),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: () => Navigator.pop(context),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.amber,
+                          backgroundColor: isModern ? Colors.white : Colors.amber,
+                          foregroundColor: isModern ? Colors.black : Colors.white,
                         ),
                         child: const Text('Quay lại'),
                       ),
@@ -274,8 +283,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: isModern ? Color(0xFF121212) : Colors.white,
                           borderRadius: BorderRadius.circular(12),
+                          border: isModern ? Border.all(color: Colors.white10) : null,
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.1),
@@ -293,18 +303,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.amber[800],
+                                color: isModern ? Colors.white : Colors.amber[800],
                               ),
                             ),
                             const SizedBox(height: 8),
                             Row(
                               children: [
-                                Icon(Icons.location_on, color: Colors.amber[600], size: 16),
+                                Icon(Icons.location_on, color: isModern ? Colors.white70 : Colors.amber[600], size: 16),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
                                     widget.field.address,
-                                    style: TextStyle(color: Colors.grey[700]),
+                                    style: TextStyle(color: isModern ? Colors.white70 : Colors.grey[700]),
                                   ),
                                 ),
                               ],
@@ -318,18 +328,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                                     icon: const Icon(Icons.directions, size: 20),
                                     label: const Text('Chỉ đường'),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.amber,
-                                      foregroundColor: Colors.white,
+                                      backgroundColor: isModern ? Colors.white : Colors.amber,
+                                      foregroundColor: isModern ? Colors.black : Colors.white,
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
                                 IconButton(
                                   onPressed: _showFieldOnMap,
-                                  icon: const Icon(Icons.my_location),
+                                  icon: Icon(Icons.my_location, color: isModern ? Colors.white : Colors.amber[900]),
                                   tooltip: 'Hiện vị trí sân',
                                   style: IconButton.styleFrom(
-                                    backgroundColor: Colors.amber[100],
+                                    backgroundColor: isModern ? Colors.white24 : Colors.amber[100],
                                   ),
                                 ),
                               ],
@@ -346,8 +356,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         child: FloatingActionButton(
                           mini: true,
                           onPressed: _showCurrentLocation,
-                          backgroundColor: Colors.white,
-                          child: Icon(Icons.gps_fixed, color: Colors.amber[800]),
+                          backgroundColor: isModern ? Color(0xFF121212) : Colors.white,
+                          shape: isModern ? CircleBorder(side: BorderSide(color: Colors.white10)) : null,
+                          child: Icon(Icons.gps_fixed, color: isModern ? Colors.white : Colors.amber[800]),
                         ),
                       ),
                   ],

@@ -25,9 +25,18 @@ class Booking {
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
+    final fieldJson = json['field'] != null
+        ? Map<String, dynamic>.from(json['field'])
+        : <String, dynamic>{
+            'id': json['fieldId'],
+            'name': json['fieldName'] ?? '',
+            'address': json['fieldAddress'] ?? '',
+            'pricePerHour': json['pricePerHour'] ?? 0.0,
+          };
+
     return Booking(
       id: json['id'],
-      field: Field.fromJson(json['field'] ?? {}),
+      field: Field.fromJson(fieldJson),
       fromTime: DateTime.parse(json['fromTime'] ?? json['from'] ?? DateTime.now().toIso8601String()),
       toTime: DateTime.parse(json['toTime'] ?? json['to'] ?? DateTime.now().toIso8601String()),
       additional: json['additional'],

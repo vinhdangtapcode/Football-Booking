@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:football_booking_flutter/screens/profile_screen.dart';
+import 'package:football_booking_flutter/services/theme_service.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../models/user.dart';
@@ -37,22 +39,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isModern = themeProvider.isModernMode;
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
         centerTitle: true,
         title: Text("Cài đặt"),
-        backgroundColor: Colors.amberAccent,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
       ),
       body: isLoading
-          ? Center(child: CircularProgressIndicator(color: Colors.amber))
+          ? Center(child: CircularProgressIndicator(color: Theme.of(context).primaryColor))
           : user == null
               ? Center(child: Text("Không thể tải thông tin người dùng."))
               : ListView(
                   children: [
                     // Header
                     Container(
-                      color: Colors.amberAccent,
+                      color: isModern ? Colors.black : Colors.amberAccent,
                       padding: EdgeInsets.symmetric(vertical: 20),
                       child: Column(
                         children: [
@@ -70,7 +75,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                              color: isModern ? Colors.white : Colors.black87,
                             ),
                           ),
                           SizedBox(height: 4),
@@ -78,15 +83,84 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             user!.email,
                             style: TextStyle(
                               fontSize: 15,
-                              color: Colors.black54,
+                              color: isModern ? Colors.white70 : Colors.black54,
                             ),
                           ),
                         ],
                       ),
                     ),
+                    // Chuyển đổi giao diện (MỚI)
+                    ListTile(
+                      leading: Icon(
+                        isModern ? Icons.dark_mode : Icons.palette,
+                        color: isModern ? Colors.white : Colors.amber,
+                      ),
+                      title: Text(
+                        "Giao diện",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isModern ? Colors.white : null,
+                        ),
+                      ),
+                      subtitle: Text(
+                        isModern ? "Chế độ Đen & Trắng" : "Chế độ cổ điển",
+                        style: TextStyle(color: isModern ? Colors.white54 : null),
+                      ),
+                      trailing: IgnorePointer(
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          width: 60,
+                          height: 32,
+                          clipBehavior: Clip.antiAlias,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            color: isModern ? Colors.grey[900] : Colors.amber[100],
+                            border: Border.all(
+                              color: isModern ? Colors.white24 : Colors.amber,
+                              width: 2,
+                            ),
+                          ),
+                          child: Stack(
+                            children: [
+                              AnimatedPositioned(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                                left: isModern ? 30 : 2,
+                                top: 2,
+                                child: Container(
+                                  width: 24,
+                                  height: 24,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isModern ? Colors.white : Colors.amber[800],
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.2),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    isModern ? Icons.dark_mode : Icons.wb_sunny,
+                                    size: 14,
+                                    color: isModern ? Colors.black : Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      onTap: () {
+                        themeProvider.toggleTheme();
+                      },
+                    ),
+                    Divider(),
                     // Sửa thông tin
                     ListTile(
-                      leading: Icon(Icons.edit, color: Colors.amberAccent),
+                      leading: Icon(Icons.edit, color: isModern ? Colors.white : Colors.amberAccent),
                       title: Text("Sửa thông tin"),
                       onTap: () {
                         Navigator.push(
@@ -107,23 +181,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     // Về chúng tôi
                     ListTile(
-                      leading: Icon(Icons.info, color: Colors.blueAccent),
+                      leading: Icon(Icons.info, color: isModern ? Colors.white : Colors.blueAccent),
                       title: Text("Về chúng tôi"),
                       onTap: () {
                         showDialog(
                           context: context,
                           builder: (context) => AlertDialog(
+                            backgroundColor: isModern ? Color(0xFF121212) : null,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            title: Center(child: Text("Về chúng tôi", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20))),
+                            title: Center(child: Text("Về chúng tôi", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: isModern ? Colors.white : null))),
                             content: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.sports_soccer, color: Colors.amber, size: 48),
+                                Icon(Icons.sports_soccer, color: isModern ? Colors.white : Colors.amber, size: 48),
                                 SizedBox(height: 16),
                                 Text(
                                   "Ứng dụng đặt sân bóng đá tiện lợi, nhanh chóng và hiện đại.\n\nLiên hệ: dovinhhp102@gmail.com\nSĐT: 0984981822",
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 16),
+                                  style: TextStyle(fontSize: 16, color: isModern ? Colors.white70 : null),
                                 ),
                               ],
                             ),
@@ -133,8 +208,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   onPressed: () => Navigator.of(context).pop(),
                                   child: Text("OK", style: TextStyle(fontWeight: FontWeight.bold)),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.amber,
-                                    foregroundColor: Colors.white,
+                                    backgroundColor: isModern ? Colors.white : Colors.amber,
+                                    foregroundColor: isModern ? Colors.black : Colors.white,
                                     minimumSize: Size(double.infinity, 48),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                   ),
@@ -148,19 +223,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     // Email chủ app
                     ListTile(
-                      leading: Icon(Icons.email, color: Colors.amberAccent),
+                      leading: Icon(Icons.email, color: isModern ? Colors.white : Colors.amberAccent),
                       title: Text("dovinhhp102@gmail.com"),
                       onTap: () => _copyToClipboard("dovinhhp102@gmail.com", "Email"),
                     ),
                     // Số điện thoại chủ app
                     ListTile(
-                      leading: Icon(Icons.phone, color: Colors.amberAccent),
+                      leading: Icon(Icons.phone, color: isModern ? Colors.white : Colors.amberAccent),
                       title: Text("0984981822"),
                       onTap: () => _copyToClipboard("0984981822", "Số điện thoại"),
                     ),
                     // Đổi mật khẩu
                     ListTile(
-                      leading: Icon(Icons.lock, color: Colors.deepPurple),
+                      leading: Icon(Icons.lock, color: isModern ? Colors.white : Colors.deepPurple),
                       title: Text("Đổi mật khẩu"),
                       onTap: () {
                         showDialog(
@@ -174,8 +249,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             String? errorMsg;
                             return StatefulBuilder(
                               builder: (context, setState) => AlertDialog(
+                                backgroundColor: isModern ? Color(0xFF121212) : null,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                title: Center(child: Text("Đổi mật khẩu", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20))),
+                                title: Center(child: Text("Đổi mật khẩu", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: isModern ? Colors.white : null))),
                                 content: Form(
                                   key: formKey,
                                   child: Column(
@@ -184,9 +260,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       TextFormField(
                                         controller: oldPassController,
                                         obscureText: true,
+                                        style: TextStyle(color: isModern ? Colors.white : null),
                                         decoration: InputDecoration(
                                           labelText: "Mật khẩu cũ",
-                                          prefixIcon: Icon(Icons.lock_outline),
+                                          labelStyle: TextStyle(color: isModern ? Colors.white70 : null),
+                                          prefixIcon: Icon(Icons.lock_outline, color: isModern ? Colors.white70 : null),
                                         ),
                                         validator: (v) => v == null || v.isEmpty ? 'Nhập mật khẩu cũ' : null,
                                       ),
@@ -194,9 +272,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       TextFormField(
                                         controller: newPassController,
                                         obscureText: true,
+                                        style: TextStyle(color: isModern ? Colors.white : null),
                                         decoration: InputDecoration(
                                           labelText: "Mật khẩu mới",
-                                          prefixIcon: Icon(Icons.lock),
+                                          labelStyle: TextStyle(color: isModern ? Colors.white70 : null),
+                                          prefixIcon: Icon(Icons.lock, color: isModern ? Colors.white70 : null),
                                         ),
                                         validator: (v) => v == null || v.length < 4 ? 'Tối thiểu 4 ký tự' : null,
                                       ),
@@ -204,9 +284,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       TextFormField(
                                         controller: confirmPassController,
                                         obscureText: true,
+                                        style: TextStyle(color: isModern ? Colors.white : null),
                                         decoration: InputDecoration(
                                           labelText: "Nhập lại mật khẩu mới",
-                                          prefixIcon: Icon(Icons.lock),
+                                          labelStyle: TextStyle(color: isModern ? Colors.white70 : null),
+                                          prefixIcon: Icon(Icons.lock, color: isModern ? Colors.white70 : null),
                                         ),
                                         validator: (v) => v != newPassController.text ? 'Mật khẩu không khớp' : null,
                                       ),
@@ -219,63 +301,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                                 actions: [
                                   isLoading
-                                      ? Center(child: CircularProgressIndicator(color: Colors.amber))
+                                      ? Center(child: CircularProgressIndicator(color: isModern ? Colors.white : Colors.amber))
                                       : Row(
                                           children: [
                                             Expanded(
                                               child: ElevatedButton(
-                                                onPressed: () async {
-                                                  if (!formKey.currentState!.validate()) return;
-                                                  setState(() { isLoading = true; errorMsg = null; });
-                                                  try {
-                                                    final response = await ApiService.changePassword(
-                                                      oldPassController.text.trim(),
-                                                      newPassController.text.trim(),
-                                                    );
-                                                    setState(() { isLoading = false; });
-                                                    if (response == true) {
-                                                      // Thêm thông báo vào SharedPreferences
-                                                      final prefs = await SharedPreferences.getInstance();
-                                                      final now = DateTime.now();
-                                                      final noti = "[${now.day}/${now.month} ${now.hour}:${now.minute.toString().padLeft(2, '0')}] Đổi mật khẩu thành công!";
-                                                      final List<String> notifications = prefs.getStringList('notifications') ?? [];
-                                                      notifications.insert(0, noti);
-                                                      await prefs.setStringList('notifications', notifications);
-                                                      Navigator.of(context).pop();
-                                                      ScaffoldMessenger.of(context).showSnackBar(
-                                                        SnackBar(content: Text('Đổi mật khẩu thành công!'), backgroundColor: Colors.green),
+                                                  onPressed: () async {
+                                                    if (!formKey.currentState!.validate()) return;
+                                                    setState(() { isLoading = true; errorMsg = null; });
+                                                    try {
+                                                      final response = await ApiService.changePassword(
+                                                        oldPassController.text.trim(),
+                                                        newPassController.text.trim(),
                                                       );
-                                                    } else {
-                                                      setState(() { errorMsg = response ?? 'Đổi mật khẩu thất bại!'; });
+                                                      setState(() { isLoading = false; });
+                                                      if (response == true) {
+                                                        // Thêm thông báo vào SharedPreferences
+                                                        final prefs = await SharedPreferences.getInstance();
+                                                        final now = DateTime.now();
+                                                        final noti = "[${now.day}/${now.month} ${now.hour}:${now.minute.toString().padLeft(2, '0')}] Đổi mật khẩu thành công!";
+                                                        final List<String> notifications = prefs.getStringList('notifications') ?? [];
+                                                        notifications.insert(0, noti);
+                                                        await prefs.setStringList('notifications', notifications);
+                                                        Navigator.of(context).pop();
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          SnackBar(content: Text('Đổi mật khẩu thành công!'), backgroundColor: Colors.green),
+                                                        );
+                                                      } else {
+                                                        setState(() { errorMsg = response ?? 'Đổi mật khẩu thất bại!'; });
+                                                      }
+                                                    } catch (e) {
+                                                      setState(() { isLoading = false; errorMsg = e.toString(); });
                                                     }
-                                                  } catch (e) {
-                                                    setState(() { isLoading = false; errorMsg = e.toString(); });
-                                                  }
-                                                },
-                                                child: Text("Xác nhận", style: TextStyle(fontWeight: FontWeight.bold)),
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: Colors.amber,
-                                                  foregroundColor: Colors.white,
-                                                  minimumSize: Size(double.infinity, 48),
-                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                  },
+                                                  child: Text("Xác nhận", style: TextStyle(fontWeight: FontWeight.bold)),
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: isModern ? Colors.white : Colors.amber,
+                                                    foregroundColor: isModern ? Colors.black : Colors.white,
+                                                    minimumSize: Size(double.infinity, 48),
+                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                            SizedBox(width: 12),
-                                            Expanded(
-                                              child: OutlinedButton(
-                                                onPressed: () => Navigator.of(context).pop(),
-                                                child: Text("Hủy"),
-                                                style: OutlinedButton.styleFrom(
-                                                  foregroundColor: Colors.amber,
-                                                  side: BorderSide(color: Colors.amber),
-                                                  minimumSize: Size(double.infinity, 48),
-                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                              SizedBox(width: 12),
+                                              Expanded(
+                                                child: OutlinedButton(
+                                                  onPressed: () => Navigator.of(context).pop(),
+                                                  child: Text("Hủy", style: TextStyle(color: isModern ? Colors.white : null)),
+                                                  style: OutlinedButton.styleFrom(
+                                                    foregroundColor: isModern ? Colors.white : Colors.amber,
+                                                    side: BorderSide(color: isModern ? Colors.white : Colors.amber),
+                                                    minimumSize: Size(double.infinity, 48),
+                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
+                                            ],
+                                          ),
                                 ],
                               ),
                             );
