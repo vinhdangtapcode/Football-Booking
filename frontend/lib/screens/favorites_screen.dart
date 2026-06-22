@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../models/field.dart';
 import '../services/api_service.dart';
@@ -64,17 +65,22 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         height: 100,
                         fit: BoxFit.cover,
                       )
-                    : Image.network(
-                        field.imageUrl!,
+                    : CachedNetworkImage(
+                        imageUrl: field.imageUrl!,
                         width: 100,
                         height: 100,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Image.asset(
-                            'lib/assets/images/san_bong.png',
-                            fit: BoxFit.cover,
-                          );
-                        },
+                        placeholder: (_, __) => const SizedBox(
+                          width: 100,
+                          height: 100,
+                          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        ),
+                        errorWidget: (_, __, ___) => Image.asset(
+                          'lib/assets/images/san_bong.png',
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                        ),
                       ),
               ),
               const SizedBox(width: 12),

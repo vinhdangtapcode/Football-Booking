@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.sql.Time;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "field")
@@ -51,6 +52,9 @@ public class Field {
 	@NotNull
 	private Boolean outdoor;
 
+	@Size(max = 500)
+	private String imageUrl; // URL ảnh đại diện chính
+
 	@ManyToOne
 	@JoinColumn(name = "owner_id", nullable = true)
 	private Owner owner;
@@ -66,6 +70,9 @@ public class Field {
 	@OneToMany(mappedBy = "field", cascade = CascadeType.ALL, orphanRemoval = true)
 	@com.fasterxml.jackson.annotation.JsonIgnore
 	private List<Favorite> favorites = new ArrayList<>();
+
+	@OneToMany(mappedBy = "field", cascade = CascadeType.ALL, orphanRemoval = true)
+	private List<FieldImage> images = new ArrayList<>();
 
 	// Getters and Setters
 	public Integer getId() { return id; }
@@ -103,6 +110,27 @@ public class Field {
 	public void setAvailable(Boolean available) { this.available = available; }
 	public Boolean getOutdoor() { return outdoor; }
 	public void setOutdoor(Boolean outdoor) { this.outdoor = outdoor; }
+
+	public String getImageUrl() { return imageUrl; }
+	public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+
+	public List<FieldImage> getImages() { return images; }
+	public void setImages(List<FieldImage> images) { this.images = images; }
+
+	@JsonProperty("imageUrls")
+	public List<String> getImageUrls() {
+		if (images == null || images.isEmpty()) {
+			return new ArrayList<>();
+		}
+		return images.stream()
+				.sorted((a, b) -> {
+					int orderA = a.getDisplayOrder() != null ? a.getDisplayOrder() : 0;
+					int orderB = b.getDisplayOrder() != null ? b.getDisplayOrder() : 0;
+					return Integer.compare(orderA, orderB);
+				})
+				.map(FieldImage::getImageUrl)
+				.collect(Collectors.toList());
+	}
 
 	public List<Book> getBookings() {
 		return bookings;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui';
 import '../models/booking.dart';
@@ -83,17 +84,22 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
                   height: 120,
                   fit: BoxFit.cover,
                 )
-                    : Image.network(
-                  booking.field.imageUrl!,
+                    : CachedNetworkImage(
+                  imageUrl: booking.field.imageUrl!,
                   width: 120,
                   height: 120,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Image.asset(
-                      'lib/assets/images/san_bong.png',
-                      fit: BoxFit.cover,
-                    );
-                  },
+                  placeholder: (_, __) => const SizedBox(
+                    width: 120,
+                    height: 120,
+                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  ),
+                  errorWidget: (_, __, ___) => Image.asset(
+                    'lib/assets/images/san_bong.png',
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -311,12 +317,16 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
                       if (booking.field.imageUrl?.isNotEmpty ?? false) ...[
                         ClipRRect(
                           borderRadius: BorderRadius.circular(16),
-                          child: Image.network(
-                            booking.field.imageUrl!,
+                          child: CachedNetworkImage(
+                            imageUrl: booking.field.imageUrl!,
                             width: double.infinity,
                             height: 140,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                            placeholder: (_, __) => const SizedBox(
+                              height: 140,
+                              child: Center(child: CircularProgressIndicator()),
+                            ),
+                            errorWidget: (_, __, ___) => const SizedBox.shrink(),
                           ),
                         ),
                         const SizedBox(height: 16),

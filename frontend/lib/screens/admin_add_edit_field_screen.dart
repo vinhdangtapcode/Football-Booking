@@ -1,6 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/field.dart';
 import '../services/api_service.dart';
+import '../services/image_compressor.dart';
 import 'location_picker_screen.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -28,6 +32,13 @@ class _AdminAddEditFieldScreenState extends State<AdminAddEditFieldScreen> {
   LatLng? selectedLocation; // Thêm biến lưu vị trí đã chọn
   bool _hasInitialized = false; // Thêm flag để tránh override
 
+  // Image upload state
+  List<File> _newImages = [];
+  List<Map<String, dynamic>> _existingImages = [];
+  bool _isUploadingImages = false;
+  String _imageStatusText = 'Đang xử lý...';
+  final ImagePicker _picker = ImagePicker();
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -49,6 +60,12 @@ class _AdminAddEditFieldScreenState extends State<AdminAddEditFieldScreen> {
         closingTimeController.text = field!.closingTime ?? "";
         available = field!.available ?? true;
         outdoor = field!.outdoor ?? true;
+        if (field!.latitude != null && field!.longitude != null) {
+          selectedLocation = LatLng(field!.latitude!, field!.longitude!);
+        }
+        if (field!.id != null) {
+          _loadExistingImages();
+        }
       } else {
         lengthController.text = "70";
         widthController.text = "50";
@@ -57,7 +74,206 @@ class _AdminAddEditFieldScreenState extends State<AdminAddEditFieldScreen> {
     }
   }
 
-  void submit() {
+  Future<void> _loadExistingImages() async {
+    if (field?.id == null) return;
+    final images = await ApiService.getFieldImages(field!.id!);
+    setState(() {
+      _existingImages = images;
+    });
+  }
+
+  Future<void> _pickImages() async {
+    final totalImages = _existingImages.length + _newImages.length;
+    if (totalImages >= 5) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Tối đa 5 ảnh!'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+    final remaining = 5 - totalImages;
+
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Chọn ảnh', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              SizedBox(height: 16),
+              ListTile(
+                leading: CircleAvatar(backgroundColor: Colors.green[100], child: Icon(Icons.photo_library, color: Colors.green[800])),
+                title: Text('Chọn từ thư viện'),
+                subtitle: Text('Chọn tối đa $remaining ảnh'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final List<XFile> images = await _picker.pickMultiImage(maxWidth: 1920, imageQuality: 85);
+                  if (images.isNotEmpty) {
+                    final toAdd = images.take(remaining).toList();
+                    setState(() {
+                      _isUploadingImages = true;
+                      _imageStatusText = 'Đang nén và chuyển đổi WebP...';
+                    });
+                    for (var x in toAdd) {
+                      File? compressed = await ImageCompressor.compressToWebp(File(x.path));
+                      if (compressed != null) {
+                        setState(() { _newImages.add(compressed); });
+                      } else {
+                        setState(() { _newImages.add(File(x.path)); });
+                      }
+                    }
+                    setState(() { _isUploadingImages = false; });
+                  }
+                },
+              ),
+              ListTile(
+                leading: CircleAvatar(backgroundColor: Colors.blue[100], child: Icon(Icons.camera_alt, color: Colors.blue[800])),
+                title: Text('Chụp ảnh mới'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final XFile? image = await _picker.pickImage(source: ImageSource.camera, maxWidth: 1920, imageQuality: 85);
+                  if (image != null) {
+                    setState(() {
+                      _isUploadingImages = true;
+                      _imageStatusText = 'Đang nén và chuyển đổi WebP...';
+                    });
+                    File? compressed = await ImageCompressor.compressToWebp(File(image.path));
+                    if (compressed != null) {
+                      setState(() { _newImages.add(compressed); });
+                    } else {
+                      setState(() { _newImages.add(File(image.path)); });
+                    }
+                    setState(() { _isUploadingImages = false; });
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _removeNewImage(int index) {
+    setState(() { _newImages.removeAt(index); });
+  }
+
+  Future<void> _removeExistingImage(int imageId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Xóa ảnh'),
+        content: Text('Bạn có chắc muốn xóa ảnh này?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Hủy')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text('Xóa', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    bool success = await ApiService.deleteFieldImage(imageId);
+    if (success) {
+      await _loadExistingImages();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ Đã xóa ảnh'), backgroundColor: Colors.green));
+    }
+  }
+
+  Widget _buildImageSection() {
+    final totalImages = _existingImages.length + _newImages.length;
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Colors.green[50], borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.green[200]!)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.photo_camera, color: Colors.green[800]),
+            SizedBox(width: 8),
+            Text('Hình ảnh sân bóng', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.green[800])),
+            Spacer(),
+            Text('$totalImages/5', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+          ]),
+          SizedBox(height: 12),
+          SizedBox(
+            height: 120,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                ..._existingImages.asMap().entries.map((entry) {
+                  final img = entry.value;
+                  final isPrimary = img['isPrimary'] == true;
+                  return _buildImageTile(
+                    child: Stack(fit: StackFit.expand, children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: GestureDetector(
+                          onTap: isPrimary ? null : () async {
+                            bool success = await ApiService.setPrimaryImage(img['id']);
+                            if (success) {
+                              await _loadExistingImages();
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ Đã chọn làm ảnh đại diện'), backgroundColor: Colors.green));
+                            }
+                          },
+                          child: CachedNetworkImage(
+                            imageUrl: img['url'],
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                            errorWidget: (_, __, ___) => Icon(Icons.broken_image, color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                      if (isPrimary) Positioned(top: 4, left: 4, child: Container(padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(8)), child: Text('★', style: TextStyle(fontSize: 12, color: Colors.white)))),
+                      Positioned(top: 4, right: 4, child: GestureDetector(onTap: () => _removeExistingImage(img['id']), child: Container(padding: EdgeInsets.all(4), decoration: BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: Icon(Icons.close, color: Colors.white, size: 14)))),
+                    ]),
+                  );
+                }),
+                ..._newImages.asMap().entries.map((entry) {
+                  return _buildImageTile(
+                    child: Stack(fit: StackFit.expand, children: [
+                      ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(entry.value, fit: BoxFit.cover)),
+                      Positioned(top: 4, left: 4, child: Container(padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(8)), child: Text('Mới', style: TextStyle(fontSize: 10, color: Colors.white)))),
+                      Positioned(top: 4, right: 4, child: GestureDetector(onTap: () => _removeNewImage(entry.key), child: Container(padding: EdgeInsets.all(4), decoration: BoxDecoration(color: Colors.red, shape: BoxShape.circle), child: Icon(Icons.close, color: Colors.white, size: 14)))),
+                    ]),
+                  );
+                }),
+                if (totalImages < 5)
+                  _buildImageTile(
+                    child: GestureDetector(
+                      onTap: _pickImages,
+                      child: Container(
+                        decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey[400]!)),
+                        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Icon(Icons.add_photo_alternate, color: Colors.grey[600], size: 32),
+                          SizedBox(height: 4),
+                          Text('Thêm ảnh', style: TextStyle(color: Colors.grey[600], fontSize: 11)),
+                        ]),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (_isUploadingImages)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(children: [
+                SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                SizedBox(width: 8),
+                Text(_imageStatusText, style: TextStyle(color: Colors.green[800], fontSize: 13)),
+              ]),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImageTile({required Widget child}) {
+    return Container(width: 100, height: 100, margin: EdgeInsets.only(right: 8), child: child);
+  }
+
+  void submit() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         isLoading = true;
@@ -81,45 +297,68 @@ class _AdminAddEditFieldScreenState extends State<AdminAddEditFieldScreen> {
         closingTime: closing,
         available: available,
         outdoor: outdoor,
+        imageUrl: field?.imageUrl,
+        latitude: selectedLocation?.latitude ?? field?.latitude,
+        longitude: selectedLocation?.longitude ?? field?.longitude,
       );
       if (field == null) {
         // Tạo mới sân
-        ApiService.adminCreateField(newField).then((success) {
+        Field? createdField = await ApiService.adminCreateField(newField);
+        if (createdField != null) {
+          if (_newImages.isNotEmpty && createdField.id != null) {
+            setState(() {
+              _isUploadingImages = true;
+              _imageStatusText = 'Đang upload ảnh lên server...';
+            });
+            await ApiService.uploadFieldImages(createdField.id!, _newImages);
+            setState(() { _isUploadingImages = false; });
+          }
           setState(() {
             isLoading = false;
           });
-          if (success) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('✅ Tạo sân thành công!'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            Navigator.pop(context, true); // Trả về true để báo hiệu cần refresh
-          } else {
-            ScaffoldMessenger.of(context)
-                .showSnackBar(SnackBar(content: Text("Field creation failed")));
-          }
-        });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Tạo sân thành công!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context, true); // Trả về true để báo hiệu cần refresh
+        } else {
+          setState(() {
+            isLoading = false;
+          });
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text("Tạo sân thất bại")));
+        }
       } else {
         // Cập nhật sân
-        ApiService.adminUpdateField(newField).then((success) {
+        bool success = await ApiService.adminUpdateField(newField);
+        if (success) {
+          if (_newImages.isNotEmpty && field!.id != null) {
+            setState(() {
+              _isUploadingImages = true;
+              _imageStatusText = 'Đang upload ảnh lên server...';
+            });
+            await ApiService.uploadFieldImages(field!.id!, _newImages);
+            setState(() { _isUploadingImages = false; });
+          }
           setState(() {
             isLoading = false;
           });
-          if (success) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('✅ Cập nhật sân thành công!'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            Navigator.pop(context, true); // Trả về true để báo hiệu cần refresh
-          } else {
-            ScaffoldMessenger.of(context)
-                .showSnackBar(SnackBar(content: Text("Field update failed")));
-          }
-        });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Cập nhật sân thành công!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context, true); // Trả về true để báo hiệu cần refresh
+        } else {
+          setState(() {
+            isLoading = false;
+          });
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text("Cập nhật sân thất bại")));
+        }
       }
     }
   }
@@ -234,6 +473,8 @@ class _AdminAddEditFieldScreenState extends State<AdminAddEditFieldScreen> {
                   alignment: Alignment.center,
                   child: Icon(Icons.admin_panel_settings, color: Colors.green, size: 60),
                 ),
+                SizedBox(height: 16),
+                _buildImageSection(),
                 SizedBox(height: 24),
                 TextFormField(
                   controller: nameController,

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
@@ -10,7 +11,7 @@ import '../models/favorite.dart';
 // Sử dụng http://10.0.2.2:8080 để kết nối local backend từ Android Emulator
 // Sử dụng http://localhost:8080 nếu chạy iOS Emulator hoặc Web
 // Sử dụng http://178.128.62.29:8080 để kết nối lên cloud server
-const String baseUrl = "http://178.128.62.29:8080";
+const String baseUrl = "http://10.0.2.2:8080";
 
 class ApiService {
   static String? _token;
@@ -292,14 +293,17 @@ class ApiService {
   }
 
   // Thêm sân cho thuê: POST /api/owner/fields
-  static Future<bool> createField(Field field) async {
+  static Future<Field?> createField(Field field) async {
     final url = Uri.parse("$baseUrl/api/owner/fields");
     final response = await http.post(
       url,
       headers: headers,
       body: jsonEncode(field.toJson()),
     );
-    return response.statusCode == 201;
+    if (response.statusCode == 201) {
+      return Field.fromJson(jsonDecode(response.body));
+    }
+    return null;
   }
 
   // Cập nhật thông tin sân: PUT /api/owner/fields/{id}
@@ -454,7 +458,7 @@ class ApiService {
   // ===== ADMIN METHODS =====
 
   // Thêm sân cho admin: POST /api/admin/fields
-  static Future<bool> adminCreateField(Field field) async {
+  static Future<Field?> adminCreateField(Field field) async {
     final url = Uri.parse("$baseUrl/api/stadiums");
     final response = await http.post(
       url,
@@ -463,7 +467,10 @@ class ApiService {
     );
     print('Admin Create Field - Status: ${response.statusCode}');
     print('Admin Create Field - Response: ${response.body}');
-    return response.statusCode == 201 || response.statusCode == 200;
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return Field.fromJson(jsonDecode(response.body));
+    }
+    return null;
   }
 
   // Cập nhật thông tin sân cho admin: PUT /api/admin/fields/{id}
@@ -714,4 +721,114 @@ class ApiService {
   }
 
   // ===== END CHAT METHODS =====
+
+  // ===== IMAGE UPLOAD METHODS =====
+
+  // Upload 1 ảnh, trả về URL
+  static Future<String?> uploadImage(File imageFile) async {
+    final url = Uri.parse("$baseUrl/api/images/upload");
+    try {
+      var request = http.MultipartRequest('POST', url);
+      if (_token != null) {
+        request.headers['Authorization'] = 'Bearer $_token';
+      }
+      request.files.add(await http.MultipartFile.fromPath('file', imageFile.path));
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return resolveImageUrl(data['url']);
+      } else {
+        print('Upload failed: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error uploading image: $e');
+    }
+    return null;
+  }
+
+  // Upload nhiều ảnh và gắn vào sân bóng
+  static Future<List<Map<String, dynamic>>> uploadFieldImages(int fieldId, List<File> imageFiles) async {
+    final url = Uri.parse("$baseUrl/api/images/field/$fieldId/upload");
+    try {
+      var request = http.MultipartRequest('POST', url);
+      if (_token != null) {
+        request.headers['Authorization'] = 'Bearer $_token';
+      }
+      for (var file in imageFiles) {
+        request.files.add(await http.MultipartFile.fromPath('files', file.path));
+      }
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+        return data.map((img) {
+          final map = Map<String, dynamic>.from(img);
+          map['url'] = resolveImageUrl(map['url']);
+          return map;
+        }).toList();
+      } else {
+        print('Upload field images failed: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print('Error uploading field images: $e');
+    }
+    return [];
+  }
+
+  // Lấy danh sách ảnh của 1 sân
+  static Future<List<Map<String, dynamic>>> getFieldImages(int fieldId) async {
+    final url = Uri.parse("$baseUrl/api/images/field/$fieldId");
+    try {
+      final response = await http.get(url, headers: headers);
+      if (response.statusCode == 200) {
+        List<dynamic> data = jsonDecode(response.body);
+        return data.map((img) {
+          final map = Map<String, dynamic>.from(img);
+          map['url'] = resolveImageUrl(map['url']);
+          return map;
+        }).toList();
+      }
+    } catch (e) {
+      print('Error getting field images: $e');
+    }
+    return [];
+  }
+
+  // Xóa 1 ảnh của sân
+  static Future<bool> deleteFieldImage(int imageId) async {
+    final url = Uri.parse("$baseUrl/api/images/$imageId");
+    try {
+      final response = await http.delete(url, headers: headers);
+      return response.statusCode == 204;
+    } catch (e) {
+      print('Error deleting field image: $e');
+      return false;
+    }
+  }
+
+  // Đặt ảnh làm ảnh đại diện (primary)
+  static Future<bool> setPrimaryImage(int imageId) async {
+    final url = Uri.parse("$baseUrl/api/images/$imageId/set-primary");
+    try {
+      final response = await http.put(url, headers: headers);
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error setting primary image: $e');
+      return false;
+    }
+  }
+
+  // Resolve image URL to match the current baseUrl
+  static String? resolveImageUrl(String? url) {
+    if (url == null) return null;
+    if (url.contains("/uploads/")) {
+      final pathIndex = url.indexOf("/uploads/");
+      final path = url.substring(pathIndex);
+      return "$baseUrl$path";
+    }
+    return url;
+  }
+
+  // ===== END IMAGE UPLOAD METHODS =====
 }

@@ -58,11 +58,15 @@ public class SecurityConfig {
 								"/api/users/login",
 								"/api/auth/**",
 								"/danh-sach-san",
+								"/uploads/**",
 								"/swagger-ui.html",
 								"/swagger-ui/**",
 								"/v3/api-docs/**",
 								"/api-docs/**")
 						.permitAll()
+
+						// Image upload - chỉ cần đăng nhập
+						.requestMatchers("/api/images/**").authenticated()
 
 						// ADMIN only - quản lý hệ thống
 						.requestMatchers("/api/stadiums/**").hasRole("ADMIN")
