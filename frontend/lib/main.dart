@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 import 'package:football_booking_flutter/screens/admin_add_edit_field_screen.dart';
 import 'package:football_booking_flutter/screens/main_tab_scaffold.dart';
 import 'package:football_booking_flutter/screens/owner_edit_profile_screen.dart';
@@ -39,6 +41,11 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Khởi tạo định dạng ngày tháng tiếng Việt
+  await initializeDateFormatting('vi', null);
+  await initializeDateFormatting('vi_VN', null);
+  Intl.defaultLocale = 'vi';
   
   // Khởi tạo Firebase
   await Firebase.initializeApp();
