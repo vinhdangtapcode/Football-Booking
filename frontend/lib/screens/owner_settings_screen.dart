@@ -94,7 +94,7 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen> {
                         color: isModern ? Colors.white : Colors.amber,
                       ),
                       title: Text(
-                        "Giao diện hiện đại",
+                        "Giao diện",
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: isModern ? Colors.white : null,

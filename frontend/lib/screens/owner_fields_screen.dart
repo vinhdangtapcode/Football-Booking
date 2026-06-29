@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
 import '../models/field.dart';
 import '../services/api_service.dart';
+import '../services/theme_service.dart';
 
 class OwnerFieldsScreen extends StatefulWidget {
   @override
@@ -154,31 +156,39 @@ class _OwnerFieldsScreenState extends State<OwnerFieldsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isModern = themeProvider.isModernMode;
+
     return Scaffold(
-      backgroundColor: Color(0xFFF8F8F8),
+      backgroundColor: isModern ? Colors.black : Color(0xFFF8F8F8),
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        backgroundColor: Colors.amberAccent,
+        backgroundColor: isModern ? Colors.black : Colors.amberAccent,
         elevation: 0,
         title: Container(
           height: 40,
           decoration: BoxDecoration(
-            color: Colors.grey[200],
+            color: isModern ? Colors.white12 : Colors.grey[200],
             borderRadius: BorderRadius.circular(10),
           ),
           child: TextField(
             controller: searchController,
             onChanged: _filterFields,
+            style: TextStyle(color: isModern ? Colors.white : Colors.black),
             decoration: InputDecoration(
               hintText: 'Tìm kiếm sân của bạn',
-              prefixIcon: Icon(Icons.search),
+              hintStyle: TextStyle(color: isModern ? Colors.white54 : Colors.grey),
+              prefixIcon: Icon(Icons.search, color: isModern ? Colors.white54 : Colors.grey),
               border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              filled: false,
             ),
           ),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.add),
+            icon: Icon(Icons.add, color: isModern ? Colors.white : Colors.black),
             onPressed: () {
               Navigator.pushNamed(context, '/addEditField')
                   .then((_) => fetchOwnerFields());
@@ -187,14 +197,26 @@ class _OwnerFieldsScreenState extends State<OwnerFieldsScreen> {
         ],
       ),
       body: isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: isModern ? Colors.white : Colors.amber))
           : filteredFields.isEmpty
-              ? Center(child: Text('Bạn chưa có sân nào!', style: TextStyle(fontSize: 16)))
+              ? Center(
+                  child: Text(
+                    'Bạn chưa có sân nào!',
+                    style: TextStyle(fontSize: 16, color: isModern ? Colors.white70 : Colors.black),
+                  ),
+                )
               : ListView.builder(
                   itemCount: filteredFields.length,
                   itemBuilder: (context, index) {
                     Field field = filteredFields[index];
                     return Card(
+                      color: isModern ? const Color(0xFF16181D) : Colors.white,
+                      elevation: isModern ? 0 : 2,
+                      clipBehavior: Clip.antiAlias,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: isModern ? BorderSide(color: Colors.white.withOpacity(0.15), width: 1.0) : BorderSide.none,
+                      ),
                       margin: EdgeInsets.symmetric(vertical: 8, horizontal: 10),
                       child: InkWell(
                         onTap: () => navigateToFieldBookingHistory(field),
@@ -219,7 +241,12 @@ class _OwnerFieldsScreenState extends State<OwnerFieldsScreen> {
                                           : CachedNetworkImage(
                                               imageUrl: field.imageUrl!,
                                               fit: BoxFit.cover,
-                                              placeholder: (_, __) => Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                              placeholder: (_, __) => Center(
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  color: isModern ? Colors.white : Colors.amber,
+                                                ),
+                                              ),
                                               errorWidget: (_, __, ___) => Image.asset(
                                                 'lib/assets/images/san_bong.png',
                                                 fit: BoxFit.cover,
@@ -234,10 +261,11 @@ class _OwnerFieldsScreenState extends State<OwnerFieldsScreen> {
                                       children: [
                                         Text(
                                           field.name,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontFamily: 'Roboto',
                                             fontSize: 16,
                                             fontWeight: FontWeight.bold,
+                                            color: isModern ? Colors.white : Colors.black,
                                           ),
                                         ),
                                         const SizedBox(height: 4),
@@ -246,7 +274,7 @@ class _OwnerFieldsScreenState extends State<OwnerFieldsScreen> {
                                           style: TextStyle(
                                             fontFamily: 'Roboto',
                                             fontSize: 14,
-                                            color: Colors.grey[600],
+                                            color: isModern ? Colors.white70 : Colors.grey[600],
                                           ),
                                         ),
                                         const SizedBox(height: 4),
@@ -264,15 +292,17 @@ class _OwnerFieldsScreenState extends State<OwnerFieldsScreen> {
                                                       ? field.rating.toInt().toString()
                                                       : field.rating.toStringAsFixed(1))
                                                   : '0',
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontFamily: 'Roboto',
+                                                color: isModern ? Colors.white70 : Colors.black,
                                               ),
                                             ),
                                             const Spacer(),
                                             Text(
                                               '${field.pricePerHour.toInt()} VNĐ/giờ',
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontFamily: 'Roboto',
+                                                color: isModern ? Colors.white70 : Colors.black,
                                               ),
                                             ),
                                           ],
@@ -286,7 +316,7 @@ class _OwnerFieldsScreenState extends State<OwnerFieldsScreen> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       IconButton(
-                                        icon: Icon(Icons.edit, color: Colors.blue),
+                                        icon: Icon(Icons.edit, color: isModern ? Colors.white70 : Colors.blue),
                                         onPressed: () => navigateToEditField(field),
                                       ),
                                       IconButton(
@@ -305,12 +335,12 @@ class _OwnerFieldsScreenState extends State<OwnerFieldsScreen> {
                   },
                 ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.amber,
+        backgroundColor: isModern ? Colors.white : Colors.amber,
         onPressed: () {
           Navigator.pushNamed(context, '/addEditField')
               .then((_) => fetchOwnerFields());
         },
-        child: Icon(Icons.add, color: Colors.white),
+        child: Icon(Icons.add, color: isModern ? Colors.black : Colors.white),
         tooltip: 'Thêm sân mới',
       ),
     );
