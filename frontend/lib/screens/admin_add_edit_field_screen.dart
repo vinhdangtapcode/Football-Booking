@@ -20,6 +20,7 @@ class _AdminAddEditFieldScreenState extends State<AdminAddEditFieldScreen> {
   TextEditingController typeController = TextEditingController();
   TextEditingController facilitiesController = TextEditingController();
   TextEditingController priceController = TextEditingController();
+  TextEditingController depositController = TextEditingController();
   TextEditingController lengthController = TextEditingController();
   TextEditingController widthController = TextEditingController();
   TextEditingController grassTypeController = TextEditingController();
@@ -53,6 +54,7 @@ class _AdminAddEditFieldScreenState extends State<AdminAddEditFieldScreen> {
         typeController.text = field!.type ?? "";
         facilitiesController.text = field!.facilities ?? "";
         priceController.text = field!.pricePerHour.toString();
+        depositController.text = field!.depositAmount.toString();
         lengthController.text = field!.length?.toString() ?? "70";
         widthController.text = field!.width?.toString() ?? "50";
         grassTypeController.text = field!.grassType ?? "";
@@ -69,6 +71,7 @@ class _AdminAddEditFieldScreenState extends State<AdminAddEditFieldScreen> {
       } else {
         lengthController.text = "70";
         widthController.text = "50";
+        depositController.text = "0";
       }
       _hasInitialized = true;
     }
@@ -290,6 +293,7 @@ class _AdminAddEditFieldScreenState extends State<AdminAddEditFieldScreen> {
         type: typeController.text,
         facilities: facilitiesController.text,
         pricePerHour: double.tryParse(priceController.text) ?? 0.0,
+        depositAmount: double.tryParse(depositController.text) ?? 0.0,
         length: double.tryParse(lengthController.text),
         width: double.tryParse(widthController.text),
         grassType: grassTypeController.text,
@@ -588,6 +592,19 @@ class _AdminAddEditFieldScreenState extends State<AdminAddEditFieldScreen> {
                   decoration: InputDecoration(
                     labelText: "Giá mỗi giờ (VNĐ)",
                     prefixIcon: Icon(Icons.attach_money, color: Colors.deepOrange),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  keyboardType: TextInputType.number,
+                  validator: (value) => value!.isEmpty ? "Bắt buộc" : null,
+                ),
+                SizedBox(height: 18),
+                TextFormField(
+                  controller: depositController,
+                  decoration: InputDecoration(
+                    labelText: "Số tiền cọc (VNĐ)",
+                    prefixIcon: Icon(Icons.security, color: Colors.green),
                     filled: true,
                     fillColor: Colors.white,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),

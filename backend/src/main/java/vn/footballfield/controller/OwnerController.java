@@ -71,6 +71,7 @@ public class OwnerController {
 			existingField.setGrassType(field.getGrassType());
 			existingField.setFacilities(field.getFacilities());
 			existingField.setPricePerHour(field.getPricePerHour());
+			existingField.setDepositAmount(field.getDepositAmount());
 			existingField.setOpeningTime(field.getOpeningTime());
 			existingField.setClosingTime(field.getClosingTime());
 			existingField.setAvailable(field.getAvailable());
@@ -83,6 +84,35 @@ public class OwnerController {
 		} else {
 			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
 		}
+	}
+
+	@Autowired
+	private vn.footballfield.service.BookingService bookingService;
+
+	@GetMapping("/revenue")
+	public ResponseEntity<?> getOwnerRevenue() {
+		String email = SecurityContextHolder.getContext().getAuthentication().getName();
+		Owner owner = ownerService.getOwnerByEmail(email);
+		if (owner == null) {
+			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+		}
+		List<Book> ownerBookings = bookingService.getBookingsByOwner(owner.getId());
+		double totalPlatformHeld = ownerBookings.stream()
+				.filter(b -> ("APPROVED".equals(b.getStatus()) || ("CANCELLED".equals(b.getStatus()) && b.getTotalPrice() != null && b.getTotalPrice() > 0))
+						&& !Boolean.TRUE.equals(b.getSettled()))
+				.mapToDouble(b -> b.getTotalPrice() != null ? b.getTotalPrice() : 0.0)
+				.sum();
+		List<vn.footballfield.entity.Settlement> settlements = bookingService.getSettlementsByOwner(owner.getId());
+		
+		java.util.Map<String, Object> response = new java.util.HashMap<>();
+		response.put("totalPlatformHeld", totalPlatformHeld);
+		response.put("bookings", ownerBookings);
+		response.put("settlements", settlements);
+		response.put("bankName", owner.getBankName() != null ? owner.getBankName() : "");
+		response.put("bankAccountNo", owner.getBankAccountNo() != null ? owner.getBankAccountNo() : "");
+		response.put("bankAccountName", owner.getBankAccountName() != null ? owner.getBankAccountName() : "");
+		
+		return ResponseEntity.ok(response);
 	}
 
 	// Xóa sân đã đăng
@@ -173,6 +203,21 @@ public class OwnerController {
 		owner.setOwnerName(ownerUpdate.getOwnerName());
 		owner.setEmail(ownerUpdate.getEmail());
 		owner.setContactNumber(ownerUpdate.getContactNumber());
+		owner.setBankName(ownerUpdate.getBankName());
+		owner.setBankAccountNo(ownerUpdate.getBankAccountNo());
+		owner.setBankAccountName(ownerUpdate.getBankAccountName());
+		ownerService.updateOwner(owner);
+		return ResponseEntity.ok(owner);
+	}
+
+	@PutMapping("/bank-details")
+	public ResponseEntity<?> updateBankDetails(@RequestBody java.util.Map<String, String> body) {
+		String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+		vn.footballfield.entity.Owner owner = ownerService.getOwnerByEmail(email);
+		if (owner == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+		owner.setBankName(body.get("bankName"));
+		owner.setBankAccountNo(body.get("bankAccountNo"));
+		owner.setBankAccountName(body.get("bankAccountName"));
 		ownerService.updateOwner(owner);
 		return ResponseEntity.ok(owner);
 	}

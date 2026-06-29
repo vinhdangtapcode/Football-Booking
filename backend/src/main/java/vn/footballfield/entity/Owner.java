@@ -7,6 +7,7 @@ import javax.validation.constraints.Size;
 
 @Entity
 @Table(name = "owner")
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Owner {
 
 	@Id
@@ -26,6 +27,18 @@ public class Owner {
 	@Column(name = "contact_number")
 	private String contactNumber;
 
+	@Size(max = 50)
+	@Column(name = "bank_name")
+	private String bankName;
+
+	@Size(max = 50)
+	@Column(name = "bank_account_no")
+	private String bankAccountNo;
+
+	@Size(max = 100)
+	@Column(name = "bank_account_name")
+	private String bankAccountName;
+
 	// Getters and Setters
 	public Integer getId() { return id; }
 	public void setId(Integer id) { this.id = id; }
@@ -35,4 +48,10 @@ public class Owner {
 	public void setEmail(String email) { this.email = email; }
 	public String getContactNumber() { return contactNumber; }
 	public void setContactNumber(String contactNumber) { this.contactNumber = contactNumber; }
+	public String getBankName() { return bankName; }
+	public void setBankName(String bankName) { this.bankName = bankName; }
+	public String getBankAccountNo() { return bankAccountNo; }
+	public void setBankAccountNo(String bankAccountNo) { this.bankAccountNo = bankAccountNo; }
+	public String getBankAccountName() { return bankAccountName; }
+	public void setBankAccountName(String bankAccountName) { this.bankAccountName = bankAccountName; }
 }

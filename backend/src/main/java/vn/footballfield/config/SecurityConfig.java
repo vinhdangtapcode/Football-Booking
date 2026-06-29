@@ -62,7 +62,10 @@ public class SecurityConfig {
 								"/swagger-ui.html",
 								"/swagger-ui/**",
 								"/v3/api-docs/**",
-								"/api-docs/**")
+								"/api-docs/**",
+								"/api/payment/webhook",
+								"/payment/success",
+								"/payment/cancel")
 						.permitAll()
 
 						// Image upload - chỉ cần đăng nhập

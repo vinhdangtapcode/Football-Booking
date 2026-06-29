@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "booking")
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Book {
 
 	@Id
@@ -38,6 +39,24 @@ public class Book {
 	@Transient
 	private String customerPhone;
 
+	@Column(name = "status")
+	private String status = "PENDING_PAYMENT";
+
+	@Column(name = "payment_link_id")
+	private String paymentLinkId;
+
+	@Column(name = "payment_url", length = 1024)
+	private String paymentUrl;
+
+	@Column(name = "total_price")
+	private Double totalPrice;
+
+	@Column(name = "created_at", nullable = false, updatable = false)
+	private LocalDateTime createdAt = LocalDateTime.now();
+
+	@Column(name = "settled")
+	private Boolean settled = false;
+
 	// Getters and Setters (as you have them)
 	public Integer getId() { return id; }
 	public void setId(Integer id) { this.id = id; }
@@ -47,6 +66,21 @@ public class Book {
 	public void setFromTime(LocalDateTime fromTime) { this.fromTime = fromTime; }
 	public LocalDateTime getToTime() { return toTime; }
 	public void setToTime(LocalDateTime toTime) { this.toTime = toTime; }
+
+	public LocalDateTime getCreatedAt() { return createdAt; }
+	public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+	public String getStatus() { return status; }
+	public void setStatus(String status) { this.status = status; }
+
+	public String getPaymentLinkId() { return paymentLinkId; }
+	public void setPaymentLinkId(String paymentLinkId) { this.paymentLinkId = paymentLinkId; }
+
+	public String getPaymentUrl() { return paymentUrl; }
+	public void setPaymentUrl(String paymentUrl) { this.paymentUrl = paymentUrl; }
+
+	public Double getTotalPrice() { return totalPrice; }
+	public void setTotalPrice(Double totalPrice) { this.totalPrice = totalPrice; }
 
 	public Field getField() {
 		return field;
@@ -59,6 +93,7 @@ public class Book {
 	public String getAdditional() { return additional; }
 	public void setAdditional(String additional) { this.additional = additional; }
 
+	@com.fasterxml.jackson.annotation.JsonIgnore
 	public User getCustomer() { return customer; }
 	public void setCustomer(User customer) { this.customer = customer; }
 
@@ -69,4 +104,7 @@ public class Book {
 	public String getCustomerPhone() {
 		return customer != null ? customer.getPhone() : null;
 	}
+
+	public Boolean getSettled() { return settled; }
+	public void setSettled(Boolean settled) { this.settled = settled; }
 }

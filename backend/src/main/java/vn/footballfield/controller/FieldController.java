@@ -53,4 +53,67 @@ public class FieldController {
 		fieldService.deleteField(id);
 		return new ResponseEntity<>(HttpStatus.NO_CONTENT);
 	}
+
+	@Autowired
+	private vn.footballfield.service.BookingService bookingService;
+
+	@GetMapping("/admin/revenue")
+	public ResponseEntity<?> getAdminRevenue() {
+		List<vn.footballfield.entity.Book> allBookings = bookingService.getAllBookings();
+		double totalPlatformHeld = allBookings.stream()
+				.filter(b -> ("APPROVED".equals(b.getStatus()) || ("CANCELLED".equals(b.getStatus()) && b.getTotalPrice() != null && b.getTotalPrice() > 0))
+						&& !Boolean.TRUE.equals(b.getSettled()))
+				.mapToDouble(b -> b.getTotalPrice() != null ? b.getTotalPrice() : 0.0)
+				.sum();
+		return ResponseEntity.ok(java.util.Map.of(
+				"totalPlatformHeld", totalPlatformHeld,
+				"bookings", allBookings
+		));
+	}
+
+	@Autowired
+	private vn.footballfield.repository.OwnerRepository ownerRepository;
+
+	@GetMapping("/admin/owners-revenue")
+	public ResponseEntity<?> getAdminOwnersRevenue() {
+		List<vn.footballfield.entity.Owner> owners = ownerRepository.findAll();
+		java.util.List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
+		
+		for (vn.footballfield.entity.Owner owner : owners) {
+			List<vn.footballfield.entity.Book> ownerBookings = bookingService.getBookingsByOwner(owner.getId());
+			
+			double unsettledAmount = ownerBookings.stream()
+					.filter(b -> ("APPROVED".equals(b.getStatus()) || ("CANCELLED".equals(b.getStatus()) && b.getTotalPrice() != null && b.getTotalPrice() > 0))
+							&& !Boolean.TRUE.equals(b.getSettled()))
+					.mapToDouble(b -> b.getTotalPrice() != null ? b.getTotalPrice() : 0.0)
+					.sum();
+					
+			List<vn.footballfield.entity.Settlement> settlements = bookingService.getSettlementsByOwner(owner.getId());
+			
+			java.util.Map<String, Object> map = new java.util.HashMap<>();
+			map.put("ownerId", owner.getId());
+			map.put("ownerName", owner.getOwnerName());
+			map.put("email", owner.getEmail());
+			map.put("contactNumber", owner.getContactNumber() != null ? owner.getContactNumber() : "");
+			map.put("unsettledAmount", unsettledAmount);
+			map.put("settlements", settlements);
+			map.put("bookingsCount", ownerBookings.size());
+			map.put("bankName", owner.getBankName() != null ? owner.getBankName() : "");
+			map.put("bankAccountNo", owner.getBankAccountNo() != null ? owner.getBankAccountNo() : "");
+			map.put("bankAccountName", owner.getBankAccountName() != null ? owner.getBankAccountName() : "");
+			result.add(map);
+		}
+		
+		return ResponseEntity.ok(result);
+	}
+
+	@PostMapping("/admin/settle/{ownerId}")
+	public ResponseEntity<?> settleOwner(@PathVariable Integer ownerId) {
+		try {
+			vn.footballfield.entity.Settlement settlement = bookingService.settleOwnerBookings(ownerId);
+			return ResponseEntity.ok(settlement);
+		} catch (Exception e) {
+			return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
+		}
+	}
 }

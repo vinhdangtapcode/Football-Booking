@@ -36,6 +36,28 @@ public class BookingController {
 				.orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
 	}
 
+	@GetMapping("/lich-su-dat-san/{bookingId}")
+	public ResponseEntity<BookingHistoryDTO> getBookingDetail(@PathVariable Integer bookingId) {
+		return bookingService.getBookingById(bookingId)
+				.map(b -> new BookingHistoryDTO(
+					b.getId(),
+					b.getField() != null ? b.getField().getId() : null,
+					b.getField() != null ? b.getField().getName() : null,
+					b.getField() != null ? b.getField().getAddress() : null,
+					(b.getField() != null && b.getField().getPricePerHour() != null) ? b.getField().getPricePerHour().doubleValue() : 0.0,
+					b.getFromTime(),
+					b.getToTime(),
+					b.getAdditional(),
+					b.getCustomerName(),
+					b.getCustomerPhone(),
+					b.getStatus(),
+					b.getTotalPrice(),
+					b.getPaymentUrl()
+				))
+				.map(dto -> new ResponseEntity<>(dto, HttpStatus.OK))
+				.orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
+	}
+
 	@GetMapping("/lich-su-dat-san")
 	public ResponseEntity<List<BookingHistoryDTO>> getBookingHistory() {
 		Integer customerId = getCurrentUserId();
@@ -51,7 +73,10 @@ public class BookingController {
 				b.getToTime(),
 				b.getAdditional(),
 				b.getCustomerName(),
-				b.getCustomerPhone()
+				b.getCustomerPhone(),
+				b.getStatus(),
+				b.getTotalPrice(),
+				b.getPaymentUrl()
 			))
 			.toList();
 		return new ResponseEntity<>(result, HttpStatus.OK);
@@ -63,15 +88,23 @@ public class BookingController {
 		return new ResponseEntity<>(bookingService.createBooking(booking, customerId), HttpStatus.CREATED);
 	}
 
-	// API: Lấy danh sách các khung giờ đã đặt của một sân
 	@GetMapping("/{fieldId}/booked-times")
 	public ResponseEntity<List<TimeRangeDTO>> getBookedTimes(@PathVariable Integer fieldId) {
 		List<Book> bookings = bookingService.getBookingsByField(fieldId);
 		List<TimeRangeDTO> result = bookings.stream()
 			.filter(b -> b.getFromTime() != null && b.getToTime() != null)
+			// Chỉ giữ các lịch đang APPROVED, PENDING_PAYMENT hoặc lịch cũ chưa có status (null)
+			.filter(b -> b.getStatus() == null || "APPROVED".equals(b.getStatus()) || "PENDING_PAYMENT".equals(b.getStatus()))
 			.map(b -> new TimeRangeDTO(b.getFromTime(), b.getToTime()))
 			.toList();
 		return ResponseEntity.ok(result);
+	}
+
+	@PostMapping("/{bookingId}/huy-san")
+	public ResponseEntity<?> cancelBooking(@PathVariable Integer bookingId) {
+		Integer customerId = getCurrentUserId();
+		Book cancelled = bookingService.cancelBooking(bookingId, customerId);
+		return ResponseEntity.ok(cancelled);
 	}
 
 	private Integer getCurrentUserId() {

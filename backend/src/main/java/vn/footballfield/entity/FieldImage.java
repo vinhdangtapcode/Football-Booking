@@ -38,6 +38,7 @@ public class FieldImage {
 	// Getters and Setters
 	public Integer getId() { return id; }
 	public void setId(Integer id) { this.id = id; }
+	@com.fasterxml.jackson.annotation.JsonIgnore
 	public Field getField() { return field; }
 	public void setField(Field field) { this.field = field; }
 	public String getImageUrl() { return imageUrl; }
