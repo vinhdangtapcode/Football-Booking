@@ -18,11 +18,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   String searchQuery = '';
   int _currentIndex = 0; // Thêm biến để theo dõi tab hiện tại
 
+  double totalPlatformHeld = 0.0;
+  List<dynamic> allBookings = [];
+  bool isRevenueLoading = false;
+
+  int _revenueSubTab = 0; // 0: Đối soát chủ sân, 1: Lịch sử cọc
+  List<dynamic> ownersRevenue = [];
+  bool isOwnersLoading = false;
+
   @override
   void initState() {
     super.initState();
     _loadStadiums();
     _loadUsers();
+    _loadRevenue();
+    _loadOwnersRevenue();
   }
 
   Future<void> _loadStadiums() async {
@@ -50,6 +60,84 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     } catch (e) {
       setState(() => isLoading = false);
       _showErrorSnackBar('Lỗi khi tải danh sách người dùng: $e');
+    }
+  }
+
+  Future<void> _loadRevenue() async {
+    setState(() => isRevenueLoading = true);
+    try {
+      final data = await ApiService.getAdminRevenue();
+      setState(() {
+        totalPlatformHeld = (data['totalPlatformHeld'] as num?)?.toDouble() ?? 0.0;
+        allBookings = data['bookings'] ?? [];
+        allBookings.sort((a, b) {
+          final aOwner = a['field']?['owner']?['ownerName']?.toString() ?? 'Chủ sân';
+          final bOwner = b['field']?['owner']?['ownerName']?.toString() ?? 'Chủ sân';
+          final ownerCompare = aOwner.compareTo(bOwner);
+          if (ownerCompare != 0) return ownerCompare;
+
+          final aTime = a['createdAt'] != null ? DateTime.parse(a['createdAt']) : DateTime.now();
+          final bTime = b['createdAt'] != null ? DateTime.parse(b['createdAt']) : DateTime.now();
+          return bTime.compareTo(aTime);
+        });
+        isRevenueLoading = false;
+      });
+    } catch (e) {
+      setState(() => isRevenueLoading = false);
+      _showErrorSnackBar('Lỗi khi tải doanh thu cọc: $e');
+    }
+  }
+
+  Future<void> _loadOwnersRevenue() async {
+    setState(() => isOwnersLoading = true);
+    try {
+      final data = await ApiService.getAdminOwnersRevenue();
+      setState(() {
+        ownersRevenue = data;
+        isOwnersLoading = false;
+      });
+    } catch (e) {
+      setState(() => isOwnersLoading = false);
+      _showErrorSnackBar('Lỗi khi tải doanh thu chủ sân: $e');
+    }
+  }
+
+  Future<void> _settleOwner(int ownerId, String ownerName) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xác nhận thanh toán'),
+        content: Text('Bạn có chắc chắn muốn đánh dấu đã đối soát & thanh toán cho chủ sân "$ownerName"? Việc này sẽ thiết lập số tiền giữ hộ hiện tại về 0đ và lưu vào lịch sử sao kê.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.green),
+            child: const Text('Xác nhận'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => isLoading = true);
+      try {
+        final success = await ApiService.settleOwner(ownerId);
+        if (success) {
+          _showSuccessSnackBar('Thanh toán đối soát thành công cho chủ sân $ownerName!');
+          await _loadRevenue();
+          await _loadOwnersRevenue();
+        } else {
+          _showErrorSnackBar('Thanh toán đối soát thất bại!');
+        }
+      } catch (e) {
+        _showErrorSnackBar('Lỗi khi đối soát: $e');
+      } finally {
+        setState(() => isLoading = false);
+      }
     }
   }
 
@@ -877,11 +965,552 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  List<dynamic> get filteredBookings {
+    if (searchQuery.isEmpty) return allBookings;
+    return allBookings.where((booking) {
+      final fieldName = booking['field']?['name']?.toString()?.toLowerCase() ?? '';
+      final ownerName = booking['field']?['owner']?['ownerName']?.toString()?.toLowerCase() ?? '';
+      final customerName = (booking['customerName'] ?? booking['customer']?['name'])?.toString()?.toLowerCase() ?? '';
+      final query = searchQuery.toLowerCase();
+      return fieldName.contains(query) || ownerName.contains(query) || customerName.contains(query);
+    }).toList();
+  }
+
+  Widget _buildRevenueTab() {
+    if (isRevenueLoading || isOwnersLoading) {
+      return const Center(child: CircularProgressIndicator(color: Colors.green));
+    }
+
+    final bookingsList = filteredBookings;
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        await _loadRevenue();
+        await _loadOwnersRevenue();
+      },
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16.0),
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20.0),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.green.shade600, Colors.teal.shade700],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'TỔNG TIỀN CỌC GIỮ HỘ',
+                      style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.1),
+                    ),
+                    const Icon(Icons.account_balance_wallet, color: Colors.white, size: 24),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  _formatMoney(totalPlatformHeld),
+                  style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Đây là tổng số tiền cọc thanh toán qua cổng VietQR trung gian đang được hệ thống giữ bảo đảm và CHƯA đối soát chuyển cho chủ sân.',
+                  style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Sub-tab toggler
+          Container(
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _revenueSubTab = 0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _revenueSubTab == 0 ? Colors.green : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        "Đối soát chủ sân",
+                        style: TextStyle(
+                          color: _revenueSubTab == 0 ? Colors.white : Colors.black87,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _revenueSubTab = 1),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _revenueSubTab == 1 ? Colors.green : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        "Lịch sử cọc",
+                        style: TextStyle(
+                          color: _revenueSubTab == 1 ? Colors.white : Colors.black87,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          _revenueSubTab == 0 ? _buildOwnersRevenueList() : _buildBookingsHistoryList(bookingsList),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOwnersRevenueList() {
+    if (ownersRevenue.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Center(child: Text('Không có chủ sân nào')),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: ownersRevenue.length,
+      itemBuilder: (context, index) {
+        final item = ownersRevenue[index];
+        final int ownerId = item['ownerId'];
+        final String ownerName = item['ownerName'] ?? 'Chủ sân';
+        final String email = item['email'] ?? '';
+        final String phone = item['contactNumber'] ?? '';
+        final double unsettledAmount = (item['unsettledAmount'] as num?)?.toDouble() ?? 0.0;
+        final List<dynamic> settlements = item['settlements'] ?? [];
+        final String bankName = item['bankName'] ?? '';
+        final String bankAccountNo = item['bankAccountNo'] ?? '';
+        final String bankAccountName = item['bankAccountName'] ?? '';
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 16),
+          elevation: 3,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          child: ExpansionTile(
+            title: Text(
+              ownerName,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Text('Email: $email', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                if (phone.isNotEmpty)
+                  Text('SĐT: $phone', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Cọc chưa đối soát:',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.black87),
+                    ),
+                    Text(
+                      _formatMoney(unsettledAmount),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: unsettledAmount > 0 ? Colors.orange.shade800 : Colors.green,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    Icons.account_balance,
+                    color: bankAccountNo.isEmpty ? Colors.grey : Colors.blue,
+                  ),
+                  tooltip: bankAccountNo.isEmpty
+                      ? "Chưa cấu hình tài khoản ngân hàng"
+                      : "Xem tài khoản ngân hàng",
+                  onPressed: () {
+                    if (bankAccountNo.isEmpty) {
+                      _showErrorSnackBar("Chủ sân chưa cấu hình tài khoản nhận tiền!");
+                    } else {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text('Tài khoản nhận tiền - $ownerName'),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildBankDetailRow("Ngân hàng:", bankName),
+                              const SizedBox(height: 8),
+                              _buildBankDetailRow("Số tài khoản:", bankAccountNo),
+                              const SizedBox(height: 8),
+                              _buildBankDetailRow("Chủ tài khoản:", bankAccountName),
+                            ],
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Đóng'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                  },
+                ),
+                const SizedBox(width: 4),
+                unsettledAmount > 0
+                    ? ElevatedButton(
+                        onPressed: () => _settleOwner(ownerId, ownerName),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: const Text('Thanh toán', style: TextStyle(fontSize: 12, color: Colors.white)),
+                      )
+                    : const Icon(Icons.check_circle_outline, color: Colors.green),
+              ],
+            ),
+            children: [
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.all(14.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Tài khoản ngân hàng nhận tiền:',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue),
+                    ),
+                    const SizedBox(height: 6),
+                    bankAccountNo.isEmpty
+                        ? const Padding(
+                            padding: EdgeInsets.only(bottom: 12),
+                            child: Text(
+                              '⚠️ Chủ sân chưa cấu hình tài khoản nhận tiền.',
+                              style: TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.w500),
+                            ),
+                          )
+                        : Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                            ),
+                            child: Column(
+                              children: [
+                                _buildBankDetailRow("Ngân hàng:", bankName),
+                                _buildBankDetailRow("Số tài khoản:", bankAccountNo),
+                                _buildBankDetailRow("Chủ tài khoản:", bankAccountName),
+                              ],
+                            ),
+                          ),
+                    const Divider(height: 16),
+                    const Text(
+                      'Lịch sử sao kê & chuyển tiền:',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    const SizedBox(height: 8),
+                    settlements.isEmpty
+                        ? const Text('Chưa có lịch sử đối soát nào.', style: TextStyle(fontSize: 12, color: Colors.grey))
+                        : ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: settlements.length,
+                            itemBuilder: (context, sIndex) {
+                              final settlement = settlements[sIndex];
+                              final double amount = (settlement['amount'] as num?)?.toDouble() ?? 0.0;
+                              final settledAtStr = settlement['settledAt'] != null 
+                                  ? DateTime.parse(settlement['settledAt']).toLocal().toString().substring(0, 19)
+                                  : '';
+                              final bookingIds = settlement['bookingIds'] ?? '';
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.grey.shade200),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Chuyển khoản: ${_formatMoney(amount)}',
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.green),
+                                        ),
+                                        Text(
+                                          settledAtStr,
+                                          style: const TextStyle(fontSize: 11, color: Colors.black54),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Mã đơn đối soát: $bookingIds',
+                                      style: const TextStyle(fontSize: 11, color: Colors.black38),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBookingsHistoryList(List<dynamic> bookingsList) {
+    if (ownersRevenue.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Center(child: Text('Không có chủ sân nào')),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: ownersRevenue.length,
+      itemBuilder: (context, index) {
+        final ownerItem = ownersRevenue[index];
+        final int ownerId = ownerItem['ownerId'];
+        final String ownerName = ownerItem['ownerName'] ?? 'Chủ sân';
+        
+        final ownerBookings = bookingsList.where((b) {
+          final bOwnerId = b['field']?['owner']?['id'];
+          return bOwnerId == ownerId;
+        }).toList();
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: ExpansionTile(
+            leading: const Icon(Icons.sports_soccer, color: Colors.green),
+            title: Text(
+              ownerName,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            subtitle: Text(
+              'Tổng số lượt đặt sân: ${ownerBookings.length} lượt',
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+            children: [
+              const Divider(height: 1),
+              ownerBookings.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text('Chủ sân này chưa có lượt đặt nào.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: ownerBookings.length,
+                      itemBuilder: (context, bIndex) {
+                        final booking = ownerBookings[bIndex];
+                        final fieldName = booking['field']?['name'] ?? 'Sân bóng';
+                        final customerName = booking['customerName'] ?? booking['customer']?['name'] ?? 'Khách ẩn';
+                        final double deposit = (booking['totalPrice'] as num?)?.toDouble() ?? 0.0;
+                        final status = booking['status'] ?? 'PENDING_PAYMENT';
+                        final bool settled = booking['settled'] ?? false;
+                        
+                        final double pricePerHour = (booking['field']?['pricePerHour'] as num?)?.toDouble() ?? 0.0;
+                        DateTime? fromTime = booking['fromTime'] != null ? DateTime.parse(booking['fromTime']) : null;
+                        DateTime? toTime = booking['toTime'] != null ? DateTime.parse(booking['toTime']) : null;
+                        double hours = 0.0;
+                        if (fromTime != null && toTime != null) {
+                          hours = toTime.difference(fromTime).inMinutes / 60.0;
+                        }
+                        final double fullPrice = hours * pricePerHour;
+                        final double remaining = fullPrice - deposit;
+                        DateTime? createdAt = booking['createdAt'] != null ? DateTime.parse(booking['createdAt']).toLocal() : null;
+
+                        Color statusColor = Colors.orange;
+                        String statusText = "Chờ cọc";
+                        if (status == 'APPROVED') {
+                          statusColor = Colors.green;
+                          statusText = settled ? "Đã đối soát" : "Thành công";
+                        } else if (status == 'CANCELLED') {
+                          statusColor = Colors.red;
+                          statusText = settled ? "Đã đối soát (Hủy cọc)" : "Đã hủy";
+                        } else if (status == 'EXPIRED') {
+                          statusColor = Colors.grey;
+                          statusText = "Hết hạn";
+                        }
+
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      fieldName,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: (settled ? Colors.blue : statusColor).withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      statusText,
+                                      style: TextStyle(color: settled ? Colors.blue : statusColor, fontSize: 10, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Divider(height: 12),
+                              _buildInfoRow('Khách đặt:', customerName),
+                              if (fromTime != null && toTime != null)
+                                _buildInfoRow(
+                                  'Khung giờ:',
+                                  '${fromTime.hour}:00 - ${toTime.hour}:00 ngày ${fromTime.day}/${fromTime.month}',
+                                ),
+                              if (createdAt != null)
+                                _buildInfoRow(
+                                  'Thời gian đặt:',
+                                  '${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')} ngày ${createdAt.day}/${createdAt.month}/${createdAt.year}',
+                                ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('Tiền cọc giữ hộ:', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                                  Text(
+                                    _formatMoney(deposit),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: status == 'APPROVED' ? Colors.green.shade700 : Colors.black87,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('Thu offline tại sân:', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                                  Text(
+                                    _formatMoney(remaining > 0 ? remaining : 0.0),
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.black54, fontSize: 13)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBankDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.black54, fontSize: 12)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87)),
+        ],
+      ),
+    );
+  }
+
+  String _formatMoney(double amount) {
+    return amount.round().toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]}.',
+    ) + 'đ';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_currentIndex == 0 ? 'Quản lý sân bóng' : 'Quản lý người dùng'),
+        title: Text(_currentIndex == 0 ? 'Quản lý sân bóng' : _currentIndex == 1 ? 'Quản lý người dùng' : 'Ví trung gian & Tổng cọc'),
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
         actions: [
@@ -890,6 +1519,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             onPressed: () {
               _loadStadiums();
               _loadUsers();
+              _loadRevenue();
             },
           ),
           IconButton(
@@ -908,8 +1538,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             padding: const EdgeInsets.all(16.0),
             child: TextField(
               decoration: InputDecoration(
-                hintText: _currentIndex == 0 ? 'Tìm kiếm sân bóng...' : 'Tìm kiếm người dùng...',
-                prefixIcon: Icon(_currentIndex == 0 ? Icons.sports_soccer : Icons.people),
+                hintText: _currentIndex == 0 
+                    ? 'Tìm kiếm sân bóng...' 
+                    : _currentIndex == 1 
+                        ? 'Tìm kiếm người dùng...' 
+                        : 'Tìm kiếm giao dịch cọc...',
+                prefixIcon: Icon(_currentIndex == 0 
+                    ? Icons.sports_soccer 
+                    : _currentIndex == 1 
+                        ? Icons.people 
+                        : Icons.account_balance_wallet),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -923,7 +1561,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
           // Content based on selected tab
           Expanded(
-            child: _currentIndex == 0 ? _buildStadiumsTab() : _buildUsersTab(),
+            child: _currentIndex == 0 
+                ? _buildStadiumsTab() 
+                : _currentIndex == 1 
+                    ? _buildUsersTab() 
+                    : _buildRevenueTab(),
           ),
         ],
       ),
@@ -956,6 +1598,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             label: 'Người dùng',
             tooltip: 'Quản lý người dùng',
           ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.account_balance_wallet),
+            activeIcon: Icon(Icons.account_balance_wallet, size: 32),
+            label: 'Ví trung gian',
+            tooltip: 'Quản lý tiền cọc giữ hộ',
+          ),
         ],
       ),
       floatingActionButton: _currentIndex == 0 ? FloatingActionButton.extended(
@@ -963,12 +1611,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         backgroundColor: Colors.green,
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('Thêm sân', style: TextStyle(color: Colors.white)),
-      ) : FloatingActionButton.extended(
+      ) : _currentIndex == 1 ? FloatingActionButton.extended(
         onPressed: () => _showAddUserDialog(),
         backgroundColor: Colors.green,
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('Thêm người dùng', style: TextStyle(color: Colors.white)),
-      ),
+      ) : null,
     );
   }
 }

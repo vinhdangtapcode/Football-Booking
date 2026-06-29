@@ -15,6 +15,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   User? user;
   bool isLoading = true;
+  bool? _localIsModern;
 
   @override
   void initState() {
@@ -40,7 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-    final isModern = themeProvider.isModernMode;
+    final isModern = _localIsModern ?? themeProvider.isModernMode;
 
     return Scaffold(
       appBar: AppBar(
@@ -154,7 +155,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       onTap: () {
-                        themeProvider.toggleTheme();
+                        setState(() {
+                          _localIsModern = !isModern;
+                        });
+                        Future.delayed(const Duration(milliseconds: 300), () {
+                          if (mounted) {
+                            themeProvider.toggleTheme();
+                            setState(() {
+                              _localIsModern = null;
+                            });
+                          }
+                        });
                       },
                     ),
                     Divider(),

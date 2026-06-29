@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "field")
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Field {
 
 	@Id
@@ -41,6 +42,9 @@ public class Field {
 
 	@Positive
 	private BigDecimal pricePerHour;
+
+	@Column(name = "deposit_amount", nullable = false)
+	private BigDecimal depositAmount = BigDecimal.ZERO;
 
 	private Time openingTime;
 
@@ -93,6 +97,8 @@ public class Field {
 	public void setFacilities(String facilities) { this.facilities = facilities; }
 	public BigDecimal getPricePerHour() { return pricePerHour; }
 	public void setPricePerHour(BigDecimal pricePerHour) { this.pricePerHour = pricePerHour; }
+	public BigDecimal getDepositAmount() { return depositAmount; }
+	public void setDepositAmount(BigDecimal depositAmount) { this.depositAmount = depositAmount; }
 	public Time getOpeningTime() { return openingTime; }
 	public void setOpeningTime(Time openingTime) { this.openingTime = openingTime; }
 	public Time getClosingTime() { return closingTime; }
@@ -132,6 +138,7 @@ public class Field {
 				.collect(Collectors.toList());
 	}
 
+	@com.fasterxml.jackson.annotation.JsonIgnore
 	public List<Book> getBookings() {
 		return bookings;
 	}

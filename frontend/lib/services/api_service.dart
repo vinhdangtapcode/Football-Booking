@@ -11,7 +11,7 @@ import '../models/favorite.dart';
 // Sử dụng http://10.0.2.2:8080 để kết nối local backend từ Android Emulator
 // Sử dụng http://localhost:8080 nếu chạy iOS Emulator hoặc Web
 // Sử dụng http://178.128.62.29:8080 để kết nối lên cloud server
-const String baseUrl = "http://178.128.62.29:8080";
+const String baseUrl = "http://10.0.2.2:8080";
 
 class ApiService {
   static String? _token;
@@ -149,7 +149,7 @@ class ApiService {
     return response.statusCode == 201;
   }
 
-  static Future<bool> confirmBookingWithAdditional(int fieldId, DateTime from, DateTime to, String additional) async {
+  static Future<Booking?> confirmBookingWithAdditional(int fieldId, DateTime from, DateTime to, String additional) async {
     final url = Uri.parse("$baseUrl/dat-san/xac-nhan");
     final body = {
       "field": {"id": fieldId},
@@ -157,12 +157,57 @@ class ApiService {
       "toTime": to.toIso8601String(),
       if (additional.isNotEmpty) "additional": additional,
     };
-    final response = await http.post(
-      url,
-      headers: headers,
-      body: jsonEncode(body),
-    );
-    return response.statusCode == 201;
+    try {
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+      if (response.statusCode == 201) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        return Booking.fromJson(decoded);
+      } else {
+        String msg = "Lỗi đặt sân";
+        try {
+          final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+          msg = decoded["message"] ?? decoded["error"] ?? "Lỗi đặt sân";
+        } catch (_) {
+          msg = utf8.decode(response.bodyBytes);
+          if (msg.isEmpty) {
+            msg = "Lỗi hệ thống (Status code: ${response.statusCode})";
+          }
+        }
+        throw Exception(msg);
+      }
+    } catch (e) {
+      print("Error creating booking: $e");
+      rethrow;
+    }
+  }
+
+  static Future<Booking?> getBookingById(int id) async {
+    final url = Uri.parse("$baseUrl/dat-san/lich-su-dat-san/$id");
+    try {
+      final response = await http.get(url, headers: headers);
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        return Booking.fromJson(decoded);
+      }
+    } catch (e) {
+      print("Error fetching booking by id $id: $e");
+    }
+    return null;
+  }
+
+  static Future<bool> cancelBooking(int bookingId) async {
+    final url = Uri.parse("$baseUrl/dat-san/$bookingId/huy-san");
+    try {
+      final response = await http.post(url, headers: headers);
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error cancelling booking: $e");
+      return false;
+    }
   }
 
   // Đổi mật khẩu: POST /change-password
@@ -828,6 +873,77 @@ class ApiService {
       return "$baseUrl$path";
     }
     return url;
+  }
+
+  static Future<Map<String, dynamic>> getOwnerRevenue() async {
+    final url = Uri.parse("$baseUrl/api/owner/revenue");
+    try {
+      final response = await http.get(url, headers: headers);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        return data;
+      }
+    } catch (e) {
+      print("Error fetching owner revenue: $e");
+    }
+    return {"totalPlatformHeld": 0.0, "bookings": []};
+  }
+
+  static Future<Map<String, dynamic>> getAdminRevenue() async {
+    final url = Uri.parse("$baseUrl/api/stadiums/admin/revenue");
+    try {
+      final response = await http.get(url, headers: headers);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        return data;
+      }
+    } catch (e) {
+      print("Error fetching admin revenue: $e");
+    }
+    return {"totalPlatformHeld": 0.0, "bookings": []};
+  }
+
+  static Future<List<dynamic>> getAdminOwnersRevenue() async {
+    final url = Uri.parse("$baseUrl/api/stadiums/admin/owners-revenue");
+    try {
+      final response = await http.get(url, headers: headers);
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      }
+    } catch (e) {
+      print("Error fetching admin owners revenue: $e");
+    }
+    return [];
+  }
+
+  static Future<bool> settleOwner(int ownerId) async {
+    final url = Uri.parse("$baseUrl/api/stadiums/admin/settle/$ownerId");
+    try {
+      final response = await http.post(url, headers: headers);
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error settling owner $ownerId: $e");
+      return false;
+    }
+  }
+
+  static Future<bool> updateOwnerBankDetails(String bankName, String bankAccountNo, String bankAccountName) async {
+    final url = Uri.parse("$baseUrl/api/owner/bank-details");
+    try {
+      final response = await http.put(
+        url,
+        headers: headers,
+        body: jsonEncode({
+          "bankName": bankName,
+          "bankAccountNo": bankAccountNo,
+          "bankAccountName": bankAccountName,
+        }),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error updating owner bank details: $e");
+      return false;
+    }
   }
 
   // ===== END IMAGE UPLOAD METHODS =====

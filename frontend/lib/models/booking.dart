@@ -11,6 +11,9 @@ class Booking {
   String? customerPhone;
   User? customer;
   String? fieldName;
+  String? status;
+  String? paymentUrl;
+  double? totalPrice;
 
   Booking({
     this.id,
@@ -22,6 +25,9 @@ class Booking {
     this.customerPhone,
     this.customer,
     this.fieldName,
+    this.status,
+    this.paymentUrl,
+    this.totalPrice,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -44,6 +50,9 @@ class Booking {
       customerPhone: json['customerPhone'],
       customer: json['customer'] != null ? User.fromJson(json['customer']) : null,
       fieldName: json['fieldName'],
+      status: json['status'],
+      paymentUrl: json['paymentUrl'],
+      totalPrice: json['totalPrice'] != null ? (json['totalPrice'] as num).toDouble() : null,
     );
   }
 
@@ -57,6 +66,9 @@ class Booking {
       if (customerName != null) 'customerName': customerName,
       if (customerPhone != null) 'customerPhone': customerPhone,
       if (customer != null) 'customer': customer!.toJson(),
+      if (status != null) 'status': status,
+      if (paymentUrl != null) 'paymentUrl': paymentUrl,
+      if (totalPrice != null) 'totalPrice': totalPrice,
     };
   }
 

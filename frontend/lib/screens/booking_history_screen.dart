@@ -18,6 +18,7 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
   String? errorMsg;
   int _currentIndex = 1; // BookingHistory có index 1 trong Bottom Navigation
   Field? selectedField;
+  String selectedStatusFilter = 'ALL';
 
   @override
   void initState() {
@@ -38,12 +39,21 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
     try {
       List<Booking> fetchedBookings = await ApiService.getBookingHistory();
 
-      // Sắp xếp danh sách booking theo fromTime, booking mới nhất sẽ đứng đầu (sắp xếp giảm dần)
       fetchedBookings.sort((a, b) {
         if (a.fromTime == null && b.fromTime == null) return 0;
         if (a.fromTime == null) return 1;
         if (b.fromTime == null) return -1;
-        return b.fromTime.compareTo(a.fromTime);
+        
+        final timeCompare = b.fromTime.compareTo(a.fromTime);
+        if (timeCompare != 0) {
+          return timeCompare;
+        }
+        
+        // Nếu cùng khung giờ đặt, lịch nào đặt sau (ID lớn hơn) sẽ hiển thị ở trên
+        if (a.id != null && b.id != null) {
+          return b.id!.compareTo(a.id!);
+        }
+        return 0;
       });
 
       setState(() {
@@ -60,6 +70,113 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
   }
 
   // Mỗi thẻ sân gồm hình ảnh bên trái và thông tin bên phải (tên sân, ngày đặt, giờ đặt)
+  Widget _buildStatusBadge(String? status, bool isModern) {
+    String text = "Chờ thanh toán";
+    Color bgColor = isModern ? Colors.orange.withOpacity(0.15) : Colors.orange.shade50;
+    Color textColor = isModern ? Colors.orange : Colors.orange.shade800;
+
+    if (status == 'APPROVED') {
+      text = "Thành công";
+      bgColor = isModern ? Colors.green.withOpacity(0.15) : Colors.green.shade50;
+      textColor = isModern ? Colors.green : Colors.green.shade800;
+    } else if (status == 'CANCELLED') {
+      text = "Đã hủy";
+      bgColor = isModern ? Colors.red.withOpacity(0.15) : Colors.red.shade50;
+      textColor = isModern ? Colors.red : Colors.red.shade800;
+    } else if (status == 'EXPIRED') {
+      text = "Hết hạn";
+      bgColor = isModern ? Colors.grey.withOpacity(0.15) : Colors.grey.shade100;
+      textColor = isModern ? Colors.grey : Colors.grey.shade600;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: textColor.withOpacity(0.3), width: 0.5),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: textColor,
+        ),
+      ),
+    );
+  }
+
+  String _getStatusName(String? status) {
+    if (status == 'APPROVED') return 'Thành công';
+    if (status == 'CANCELLED') return 'Đã hủy';
+    if (status == 'EXPIRED') return 'Đã hết hạn';
+    return 'Chờ thanh toán';
+  }
+
+  Widget _buildFilterRow(bool isModern) {
+    final filters = [
+      {'key': 'ALL', 'label': 'Tất cả'},
+      {'key': 'PENDING_PAYMENT', 'label': 'Chờ TT'},
+      {'key': 'APPROVED', 'label': 'Thành công'},
+      {'key': 'CANCELLED', 'label': 'Đã hủy'},
+      {'key': 'EXPIRED', 'label': 'Hết hạn'},
+    ];
+
+    final Color activeBgColor = isModern ? Colors.white : Colors.amber;
+    final Color activeTextColor = isModern ? Colors.black : Colors.white;
+    final Color inactiveBgColor = isModern ? const Color(0xFF1E1E1E) : Colors.grey[200]!;
+    final Color inactiveTextColor = isModern ? Colors.white70 : Colors.black87;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: filters.map((filter) {
+          final isSelected = selectedStatusFilter == filter['key'];
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    selectedStatusFilter = filter['key']!;
+                  });
+                },
+                child: Container(
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: isSelected ? activeBgColor : inactiveBgColor,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isSelected
+                          ? (isModern ? Colors.white : Colors.amber)
+                          : Colors.transparent,
+                      width: 1,
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    filter['label']!,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected ? activeTextColor : inactiveTextColor,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   Widget buildBookingItem(Booking booking, bool isModern) {
     return Card(
       color: isModern ? Color(0xFF121212) : null,
@@ -111,19 +228,30 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        (booking.fieldName != null &&
-                            booking.fieldName!.isNotEmpty)
-                        ? booking.fieldName!
-                        : (booking.field.name.isNotEmpty
-                            ? booking.field.name
-                            : '(Không có tên sân)'),
-                        style: TextStyle(
-                          fontFamily: 'Roboto',
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: isModern ? Colors.white : null,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              (booking.fieldName != null &&
+                                  booking.fieldName!.isNotEmpty)
+                              ? booking.fieldName!
+                              : (booking.field.name.isNotEmpty
+                                  ? booking.field.name
+                                  : '(Không có tên sân)'),
+                              style: TextStyle(
+                                fontFamily: 'Roboto',
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: isModern ? Colors.white : null,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          _buildStatusBadge(booking.status, isModern),
+                        ],
                       ),
                       const SizedBox(height: 4),
                       // Dòng 1: Ngày đặt
@@ -178,6 +306,15 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isModern = themeProvider.isModernMode;
 
+    final filteredBookings = bookings.where((b) {
+      if (selectedStatusFilter == 'ALL') return true;
+      if (selectedStatusFilter == 'APPROVED') return b.status == 'APPROVED';
+      if (selectedStatusFilter == 'PENDING_PAYMENT') return b.status == 'PENDING_PAYMENT';
+      if (selectedStatusFilter == 'CANCELLED') return b.status == 'CANCELLED';
+      if (selectedStatusFilter == 'EXPIRED') return b.status == 'EXPIRED';
+      return true;
+    }).toList();
+
     return Scaffold(
       backgroundColor: isModern ? Colors.black : null,
       appBar: AppBar(
@@ -194,37 +331,122 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
           child: Container(color: Colors.white12, height: 1),
         ) : null,
       ),
-      body: RefreshIndicator(
-        onRefresh: fetchBookingHistory,
-        child: isLoading
-            ? Center(child: CircularProgressIndicator(color: isModern ? Colors.white : Colors.amber))
-            : errorMsg != null
-            ? ListView(
-          children: [
-            SizedBox(
-              height: MediaQuery.of(context).size.height * 0.8,
-              child: Center(child: Text(errorMsg!, style: TextStyle(color: isModern ? Colors.white : null))),
+      body: Column(
+        children: [
+          _buildFilterRow(isModern),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: fetchBookingHistory,
+              child: isLoading
+                  ? Center(child: CircularProgressIndicator(color: isModern ? Colors.white : Colors.amber))
+                  : errorMsg != null
+                  ? ListView(
+                children: [
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.7,
+                    child: Center(child: Text(errorMsg!, style: TextStyle(color: isModern ? Colors.white : null))),
+                  ),
+                ],
+              )
+                  : filteredBookings.isEmpty
+                  ? ListView(
+                children: [
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.7,
+                    child: Center(
+                        child: Text(selectedStatusFilter == 'ALL'
+                            ? "Chưa có lịch sử đặt sân."
+                            : "Không có lịch đặt nào phù hợp.",
+                            style: TextStyle(color: isModern ? Colors.white54 : null))),
+                  ),
+                ],
+              )
+                  : ListView.builder(
+                itemCount: filteredBookings.length,
+                itemBuilder: (context, index) {
+                  return buildBookingItem(filteredBookings[index], isModern);
+                },
+              ),
             ),
-          ],
-        )
-            : bookings.isEmpty
-            ? ListView(
-          children: [
-            SizedBox(
-              height: MediaQuery.of(context).size.height * 0.8,
-              child: Center(
-                  child: Text("Chưa có lịch sử đặt sân.", style: TextStyle(color: isModern ? Colors.white54 : null))),
-            ),
-          ],
-        )
-            : ListView.builder(
-          itemCount: bookings.length,
-          itemBuilder: (context, index) {
-            return buildBookingItem(bookings[index], isModern);
-          },
-        ),
+          ),
+        ],
       ),
       bottomNavigationBar: null,
+    );
+  }
+
+  void _confirmCancelBooking(BuildContext parentContext, Booking booking) {
+    final isApproved = booking.status == 'APPROVED';
+    final depositAmount = (booking.totalPrice ?? 0).toInt();
+
+    showDialog(
+      context: parentContext,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.red),
+              SizedBox(width: 8),
+              Text("Xác nhận hủy đặt sân", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          content: Text(
+            isApproved
+                ? "Bạn có chắc chắn muốn hủy lịch đặt sân này?\n\n⚠️ LƯU Ý: Số tiền đặt cọc ($depositAmount VNĐ) đã thanh toán qua QR sẽ KHÔNG được hoàn trả theo chính sách của hệ thống."
+                : "Bạn có chắc chắn muốn hủy lịch đặt sân này?\n\nLịch đặt chưa thanh toán này sẽ bị hủy ngay lập tức.",
+            style: const TextStyle(fontSize: 14, height: 1.5),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Hủy bỏ", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context); // Đóng alert dialog
+                Navigator.pop(parentContext); // Đóng booking detail dialog
+                
+                // Show loading indicator
+                ScaffoldMessenger.of(parentContext).showSnackBar(
+                  SnackBar(content: Row(
+                    children: [
+                      const CircularProgressIndicator(strokeWidth: 2),
+                      const SizedBox(width: 15),
+                      const Text("Đang xử lý hủy sân..."),
+                    ],
+                  )),
+                );
+
+                final success = await ApiService.cancelBooking(booking.id!);
+                ScaffoldMessenger.of(parentContext).hideCurrentSnackBar();
+
+                if (success) {
+                  ScaffoldMessenger.of(parentContext).showSnackBar(
+                    const SnackBar(
+                      content: Text("Hủy đặt sân thành công! Khung giờ đã được giải phóng. ❌"),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                  fetchBookingHistory(); // Reload history list
+                } else {
+                  ScaffoldMessenger.of(parentContext).showSnackBar(
+                    const SnackBar(
+                      content: Text("Hủy đặt sân thất bại. Vui lòng thử lại."),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text("Xác nhận hủy", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -235,6 +457,13 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
     final durationInMinutes = booking.toTime.difference(booking.fromTime).inMinutes;
     final durationInHours = durationInMinutes / 60.0;
     final totalPrice = durationInHours * booking.field.pricePerHour;
+
+    final depositPaid = (booking.status == 'APPROVED' || booking.status == 'CANCELLED')
+        ? (booking.totalPrice ?? 0.0)
+        : 0.0;
+    final remainingPayment = (booking.status == 'CANCELLED' || booking.status == 'EXPIRED')
+        ? 0.0
+        : (totalPrice - (booking.totalPrice ?? 0.0));
 
     showDialog(
       context: context,
@@ -400,6 +629,14 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
                           themeProvider: themeProvider,
                         ),
                       ],
+                      const SizedBox(height: 10),
+                      _buildPopupRow(
+                        icon: Icons.info_outline,
+                        label: 'Trạng thái',
+                        value: _getStatusName(booking.status),
+                        isModern: isModern,
+                        themeProvider: themeProvider,
+                      ),
                       if (booking.additional != null && booking.additional!.trim().isNotEmpty) ...[
                         const SizedBox(height: 10),
                         _buildPopupRow(
@@ -463,7 +700,30 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Số tiền đã thanh toán',
+                            'Tổng tiền sân',
+                            style: TextStyle(
+                              fontFamily: 'Roboto',
+                              fontSize: 14,
+                              color: isModern ? Colors.white70 : Colors.grey.shade700,
+                            ),
+                          ),
+                          Text(
+                            '${totalPrice.toInt()} VNĐ',
+                            style: TextStyle(
+                              fontFamily: 'Roboto',
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: isModern ? Colors.white70 : Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Tiền cọc đã thanh toán',
                             style: TextStyle(
                               fontFamily: 'Roboto',
                               fontSize: 14,
@@ -472,18 +732,115 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
                             ),
                           ),
                           Text(
-                            '${totalPrice.toInt()} VNĐ',
+                            '${depositPaid.toInt()} VNĐ',
                             style: TextStyle(
                               fontFamily: 'Roboto',
-                              fontSize: 18,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: isModern ? themeProvider.accentColor : Colors.green.shade700,
                             ),
                           ),
                         ],
                       ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Còn lại (Thanh toán tại sân)',
+                            style: TextStyle(
+                              fontFamily: 'Roboto',
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: isModern ? Colors.white70 : Colors.grey.shade700,
+                            ),
+                          ),
+                          Text(
+                            '${remainingPayment.toInt()} VNĐ',
+                            style: TextStyle(
+                              fontFamily: 'Roboto',
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isModern ? Colors.orange : Colors.orange.shade800,
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 20),
-                      
+                      if (booking.status == 'PENDING_PAYMENT' && booking.paymentUrl != null) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              Navigator.pop(context); // Đóng dialog
+                              final isSuccess = await Navigator.pushNamed(
+                                context,
+                                '/payment',
+                                arguments: booking,
+                              );
+                              if (isSuccess == true) {
+                                fetchBookingHistory(); // Reload history
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isModern ? Colors.white : Colors.amber,
+                              foregroundColor: isModern ? Colors.black : Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.payment, size: 20, color: isModern ? Colors.black : Colors.white),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Thanh toán ngay',
+                                  style: TextStyle(
+                                    fontFamily: 'Roboto',
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                      if (booking.status == 'PENDING_PAYMENT' || booking.status == 'APPROVED') ...[
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: OutlinedButton(
+                            onPressed: () => _confirmCancelBooking(context, booking),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.red,
+                              side: const BorderSide(color: Colors.red),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.cancel_outlined, size: 20, color: Colors.red),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Hủy đặt sân',
+                                  style: TextStyle(
+                                    fontFamily: 'Roboto',
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
                       // Nút đóng
                       SizedBox(
                         width: double.infinity,

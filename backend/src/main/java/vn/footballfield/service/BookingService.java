@@ -1,16 +1,21 @@
 package vn.footballfield.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import vn.footballfield.entity.Book;
 import vn.footballfield.entity.Field;
 import vn.footballfield.entity.Notification;
-import vn.footballfield.exception.InvalidBookingTimeException;
 import vn.footballfield.repository.BookingRepository;
 import vn.footballfield.repository.FieldRepository;
 import vn.footballfield.repository.NotificationRepository;
+import vn.payos.PayOS;
+import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
+import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
 
 import javax.validation.Valid;
+import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -37,6 +42,15 @@ public class BookingService {
 	@Autowired
 	private ChatService chatService;
 
+	@Autowired
+	private PayOS payOS;
+
+	@Autowired
+	private vn.footballfield.repository.SettlementRepository settlementRepository;
+
+	@Value("${file.base-url:http://localhost:8080}")
+	private String baseUrl;
+
 	private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
 	public Book createBooking(@Valid Book booking, Integer customerId) {
@@ -52,12 +66,34 @@ public class BookingService {
 			throw new RuntimeException("Field not available");
 		}
 
-		// Kiểm tra trùng lịch đặt sân (chỉ overlap thực sự mới không cho đặt, đặt liên
-		// tiếp thì cho phép)
+		// 1. ÁP DỤNG GIỚI HẠN ĐẶT SÂN
+		List<Book> customerBookings = bookingRepository.findByCustomerId(customerId);
+		
+		// Giới hạn 1: Không được có quá 1 lịch đặt ở trạng thái chờ thanh toán
+		long pendingCount = customerBookings.stream()
+				.filter(b -> "PENDING_PAYMENT".equals(b.getStatus()))
+				.count();
+		if (pendingCount >= 1) {
+			throw new RuntimeException("Bạn đang có 1 lịch chờ thanh toán. Vui lòng hoàn tất hoặc hủy trước khi đặt thêm!");
+		}
+
+		// Giới hạn 2: Không được có quá 2 lịch đặt ở tương lai (đã được duyệt)
+		LocalDateTime nowTime = LocalDateTime.now();
+		long activeFutureCount = customerBookings.stream()
+				.filter(b -> "APPROVED".equals(b.getStatus()) && b.getFromTime() != null && b.getFromTime().isAfter(nowTime))
+				.count();
+		if (activeFutureCount >= 2) {
+			throw new RuntimeException("Bạn đã đạt giới hạn đặt tối đa (tối đa 2 lịch đặt ở tương lai cùng lúc)!");
+		}
+
+		// 2. KIỂM TRA TRÙNG LỊCH (Chỉ kiểm tra trùng lịch với APPROVED hoặc PENDING_PAYMENT)
 		List<Book> existingBookings = bookingRepository.findByField_Id(field.getId());
 		for (Book b : existingBookings) {
 			if (b.getFromTime() != null && b.getToTime() != null && booking.getFromTime() != null
 					&& booking.getToTime() != null) {
+				if ("CANCELLED".equals(b.getStatus()) || "EXPIRED".equals(b.getStatus())) {
+					continue;
+				}
 				boolean overlap = booking.getFromTime().isBefore(b.getToTime())
 						&& booking.getToTime().isAfter(b.getFromTime());
 				if (overlap) {
@@ -66,13 +102,82 @@ public class BookingService {
 			}
 		}
 
+		// 3. TÍNH TOÁN TIỀN CỌC (Cấu hình sẵn trên sân nhân với số giờ thuê)
+		double durationInHours = 1.0;
+		if (booking.getFromTime() != null && booking.getToTime() != null) {
+			long minutes = java.time.Duration.between(booking.getFromTime(), booking.getToTime()).toMinutes();
+			durationInHours = minutes / 60.0;
+		}
+		if (durationInHours <= 0.0) {
+			durationInHours = 1.0;
+		}
+
+		BigDecimal depositBigDecimal = field.getDepositAmount() != null ? field.getDepositAmount() : BigDecimal.ZERO;
+		long amount = Math.round(depositBigDecimal.doubleValue() * durationInHours);
+
+		// Nếu số tiền cọc bằng 0, duyệt luôn không cần cổng thanh toán
+		if (amount <= 0) {
+			booking.setCustomerId(customerId);
+			booking.setField(field);
+			booking.setStatus("APPROVED");
+			booking.setTotalPrice(0.0);
+			
+			vn.footballfield.entity.User customer = userRepository.findById(customerId).orElse(null);
+			booking.setCustomer(customer);
+			
+			Book savedBooking = bookingRepository.save(booking);
+			confirmAndNotifyBooking(savedBooking);
+			return savedBooking;
+		}
+
+		// 4. LƯU LỊCH ĐẶT Ở TRẠNG THÁI CHỜ THANH TOÁN
 		booking.setCustomerId(customerId);
-		booking.setField(field); // Gán lại đối tượng Field từ DB cho booking
-		// Set customer object for serialization
+		booking.setField(field);
+		booking.setStatus("PENDING_PAYMENT");
+		booking.setTotalPrice((double) amount);
+		
 		vn.footballfield.entity.User customer = userRepository.findById(customerId).orElse(null);
 		booking.setCustomer(customer);
+		
 		Book savedBooking = bookingRepository.save(booking);
 
+		// 5. TẠO LIÊN KẾT THANH TOÁN QUA PAYOS
+		try {
+			String returnUrl = baseUrl + "/payment/success";
+			String cancelUrl = baseUrl + "/payment/cancel";
+
+			CreatePaymentLinkRequest paymentData = CreatePaymentLinkRequest.builder()
+					.orderCode(savedBooking.getId().longValue())
+					.amount(amount)
+					.description("Dat san ID " + savedBooking.getId())
+					.returnUrl(returnUrl)
+					.cancelUrl(cancelUrl)
+					.build();
+
+			CreatePaymentLinkResponse response = payOS.paymentRequests().create(paymentData);
+			savedBooking.setPaymentUrl(response.getCheckoutUrl());
+			savedBooking.setPaymentLinkId(response.getPaymentLinkId());
+			savedBooking = bookingRepository.save(savedBooking);
+		} catch (Exception e) {
+			bookingRepository.delete(savedBooking);
+			throw new RuntimeException("Lỗi khởi tạo cổng thanh toán PayOS: " + e.getMessage());
+		}
+
+		return savedBooking;
+	}
+
+	public void confirmAndNotifyBooking(Book booking) {
+		if (booking == null) return;
+		
+		booking.setStatus("APPROVED");
+		bookingRepository.save(booking);
+
+		Field field = booking.getField();
+		vn.footballfield.entity.User customer = booking.getCustomer();
+		if (customer == null && booking.getCustomerId() != null) {
+			customer = userRepository.findById(booking.getCustomerId()).orElse(null);
+		}
+		
 		// Format thời gian để hiển thị đẹp hơn
 		String fromTimeStr = booking.getFromTime() != null ? booking.getFromTime().format(TIME_FORMATTER) : "";
 		String toTimeStr = booking.getToTime() != null ? booking.getToTime().format(TIME_FORMATTER) : "";
@@ -80,8 +185,8 @@ public class BookingService {
 
 		// Tạo thông báo cho người dùng
 		Notification userNoti = new Notification();
-		userNoti.setUserId(customerId);
-		String userMessage = "Bạn đã đặt sân '" + field.getName() + "' thành công từ " + fromTimeStr + " đến "
+		userNoti.setUserId(booking.getCustomerId());
+		String userMessage = "Bạn đã đặt sân '" + (field != null ? field.getName() : "") + "' thành công từ " + fromTimeStr + " đến "
 				+ toTimeStr + ".";
 		userNoti.setMessage(userMessage);
 		notificationRepository.save(userNoti);
@@ -91,11 +196,11 @@ public class BookingService {
 			pushNotificationService.sendNotification(
 					customer.getFcmToken(),
 					"Đặt sân thành công! ⚽",
-					"Bạn đã đặt sân '" + field.getName() + "' từ " + fromTimeStr + " đến " + toTimeStr);
+					"Bạn đã đặt sân '" + (field != null ? field.getName() : "") + "' từ " + fromTimeStr + " đến " + toTimeStr);
 		}
 
 		// Tạo thông báo cho chủ sân
-		if (field.getOwner() != null) {
+		if (field != null && field.getOwner() != null) {
 			vn.footballfield.entity.Owner owner = field.getOwner();
 			vn.footballfield.entity.User ownerUser = null;
 			if (owner != null && owner.getEmail() != null) {
@@ -121,9 +226,9 @@ public class BookingService {
 		}
 
 		// Gửi tin nhắn thông báo đặt sân vào cuộc hội thoại
-		if (field.getOwner() != null) {
+		if (field != null && field.getOwner() != null && booking.getCustomerId() != null) {
 			chatService.sendBookingNotificationMessage(
-					customerId,
+					booking.getCustomerId(),
 					field.getOwner().getId(),
 					field.getId(),
 					field.getName(),
@@ -131,23 +236,165 @@ public class BookingService {
 					toTimeStr,
 					customerName);
 		}
+	}
 
-		return savedBooking;
+	private void syncPendingBookings(List<Book> bookings) {
+		if (bookings == null) return;
+		for (Book booking : bookings) {
+			if ("PENDING_PAYMENT".equals(booking.getStatus())) {
+				try {
+					vn.payos.model.v2.paymentRequests.PaymentLink info = payOS.paymentRequests().get(booking.getId().longValue());
+					if (vn.payos.model.v2.paymentRequests.PaymentLinkStatus.PAID.equals(info.getStatus())) {
+						confirmAndNotifyBooking(booking);
+					} else if (vn.payos.model.v2.paymentRequests.PaymentLinkStatus.CANCELLED.equals(info.getStatus())) {
+						booking.setStatus("CANCELLED");
+						booking.setTotalPrice(0.0);
+						bookingRepository.save(booking);
+					}
+				} catch (Exception e) {
+					System.out.println("Kiểm tra trạng thái PayOS cho lịch đặt " + booking.getId() + " thất bại: " + e.getMessage());
+				}
+			}
+		}
 	}
 
 	public List<Book> getBookingsByCustomer(Integer customerId) {
-		return bookingRepository.findByCustomerId(customerId);
+		List<Book> bookings = bookingRepository.findByCustomerId(customerId);
+		syncPendingBookings(bookings);
+		return bookings;
 	}
 
 	public Optional<Book> getBookingById(Integer id) {
-		return bookingRepository.findById(id);
+		Optional<Book> bookingOpt = bookingRepository.findById(id);
+		if (bookingOpt.isPresent()) {
+			Book booking = bookingOpt.get();
+			if ("PENDING_PAYMENT".equals(booking.getStatus())) {
+				try {
+					vn.payos.model.v2.paymentRequests.PaymentLink info = payOS.paymentRequests().get(booking.getId().longValue());
+					if (vn.payos.model.v2.paymentRequests.PaymentLinkStatus.PAID.equals(info.getStatus())) {
+						confirmAndNotifyBooking(booking);
+					} else if (vn.payos.model.v2.paymentRequests.PaymentLinkStatus.CANCELLED.equals(info.getStatus())) {
+						booking.setStatus("CANCELLED");
+						booking.setTotalPrice(0.0);
+						bookingRepository.save(booking);
+					}
+				} catch (Exception e) {
+					System.out.println("Kiểm tra trạng thái PayOS cho lịch đặt " + id + " chưa đổi: " + e.getMessage());
+				}
+			}
+		}
+		return bookingOpt;
 	}
 
 	public List<Book> getBookingsByOwner(Integer ownerId) {
-		return bookingRepository.findByField_Owner_Id(ownerId);
+		List<Book> bookings = bookingRepository.findByField_Owner_Id(ownerId);
+		syncPendingBookings(bookings);
+		return bookings;
 	}
 
 	public List<Book> getBookingsByField(Integer fieldId) {
-		return bookingRepository.findByField_Id(fieldId);
+		List<Book> bookings = bookingRepository.findByField_Id(fieldId);
+		syncPendingBookings(bookings);
+		return bookings;
+	}
+
+	public List<Book> getAllBookings() {
+		return bookingRepository.findAll();
+	}
+
+	public Book cancelBooking(Integer bookingId, Integer customerId) {
+		Book booking = bookingRepository.findById(bookingId)
+				.orElseThrow(() -> new RuntimeException("Không tìm thấy lịch đặt sân này"));
+				
+		if (!booking.getCustomerId().equals(customerId)) {
+			throw new RuntimeException("Bạn không có quyền hủy lịch đặt này");
+		}
+		
+		if ("CANCELLED".equals(booking.getStatus()) || "EXPIRED".equals(booking.getStatus())) {
+			throw new RuntimeException("Lịch đặt sân đã ở trạng thái hủy hoặc hết hạn");
+		}
+		
+		// Hủy trên PayOS nếu đang chờ thanh toán
+		if ("PENDING_PAYMENT".equals(booking.getStatus())) {
+			try {
+				payOS.paymentRequests().cancel(booking.getId().longValue(), "Khach hang chu dong huy");
+			} catch (Exception e) {
+				System.out.println("Hủy link PayOS thất bại: " + e.getMessage());
+			}
+			booking.setTotalPrice(0.0);
+		}
+		
+		booking.setStatus("CANCELLED");
+		
+		// Gửi thông báo cho chủ sân về việc hủy sân
+		try {
+			if (booking.getField() != null && booking.getField().getOwner() != null) {
+				vn.footballfield.entity.Owner owner = booking.getField().getOwner();
+				vn.footballfield.entity.User ownerUser = null;
+				if (owner != null && owner.getEmail() != null) {
+					ownerUser = userRepository.findByEmail(owner.getEmail()).orElse(null);
+				}
+				if (ownerUser != null) {
+					Notification ownerNoti = new Notification();
+					ownerNoti.setUserId(ownerUser.getId());
+					String msg = "Lịch đặt sân '" + booking.getField().getName() + "' mã #" + booking.getId() + " đã bị hủy bởi khách hàng.";
+					ownerNoti.setMessage(msg);
+					notificationRepository.save(ownerNoti);
+					
+					if (ownerUser.getFcmToken() != null) {
+						pushNotificationService.sendNotification(
+								ownerUser.getFcmToken(),
+								"Lịch đặt sân đã bị hủy ❌",
+								msg
+						);
+					}
+				}
+			}
+		} catch (Exception e) {
+			System.out.println("Gửi thông báo hủy sân thất bại: " + e.getMessage());
+		}
+
+		return bookingRepository.save(booking);
+	}
+
+	@jakarta.transaction.Transactional
+	public vn.footballfield.entity.Settlement settleOwnerBookings(Integer ownerId) {
+		List<Book> ownerBookings = getBookingsByOwner(ownerId);
+		
+		List<Book> unsettledBookings = ownerBookings.stream()
+				.filter(b -> ("APPROVED".equals(b.getStatus()) || ("CANCELLED".equals(b.getStatus()) && b.getTotalPrice() != null && b.getTotalPrice() > 0))
+						&& !Boolean.TRUE.equals(b.getSettled()))
+				.toList();
+
+		if (unsettledBookings.isEmpty()) {
+			throw new RuntimeException("Chủ sân không có số dư nào cần đối soát!");
+		}
+
+		double totalAmount = unsettledBookings.stream()
+				.mapToDouble(b -> b.getTotalPrice() != null ? b.getTotalPrice() : 0.0)
+				.sum();
+
+		java.util.List<String> bookingIdsList = unsettledBookings.stream()
+				.map(b -> String.valueOf(b.getId()))
+				.toList();
+		String bookingIdsStr = String.join(",", bookingIdsList);
+
+		vn.footballfield.entity.Settlement settlement = new vn.footballfield.entity.Settlement();
+		settlement.setOwnerId(ownerId);
+		settlement.setAmount(totalAmount);
+		settlement.setSettledAt(LocalDateTime.now());
+		settlement.setBookingIds(bookingIdsStr);
+		settlementRepository.save(settlement);
+
+		for (Book booking : unsettledBookings) {
+			booking.setSettled(true);
+			bookingRepository.save(booking);
+		}
+
+		return settlement;
+	}
+
+	public List<vn.footballfield.entity.Settlement> getSettlementsByOwner(Integer ownerId) {
+		return settlementRepository.findByOwnerIdOrderBySettledAtDesc(ownerId);
 	}
 }

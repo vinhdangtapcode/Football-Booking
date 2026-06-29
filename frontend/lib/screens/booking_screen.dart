@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import '../models/field.dart';
+import '../models/booking.dart';
 import '../services/api_service.dart';
 import '../services/theme_service.dart';
 
@@ -231,7 +232,7 @@ class _BookingScreenState extends State<BookingScreen> {
     });
 
     try {
-      bool success = await ApiService.confirmBookingWithAdditional(
+      final Booking? createdBooking = await ApiService.confirmBookingWithAdditional(
         field!.id!,
         fromTime,
         toTime,
@@ -242,12 +243,20 @@ class _BookingScreenState extends State<BookingScreen> {
         isLoading = false;
       });
 
-      if (success) {
+      if (createdBooking != null) {
         _addNotification('Đặt sân "${field!.name}" thành công lúc ${fromTime.hour.toString().padLeft(2, '0')}:00 - ${toTime.hour.toString().padLeft(2, '0')}:00 ngày ${fromTime.day}/${fromTime.month}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Đặt sân thành công'), backgroundColor: Colors.green),
-        );
-        Navigator.pop(context);
+        
+        if (mounted) {
+          final isSuccess = await Navigator.pushNamed(
+            context,
+            '/payment',
+            arguments: createdBooking,
+          );
+          
+          if (isSuccess == true) {
+            Navigator.pop(context);
+          }
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Đặt sân thất bại'), backgroundColor: Colors.red),
@@ -257,7 +266,7 @@ class _BookingScreenState extends State<BookingScreen> {
       setState(() {
         isLoading = false;
       });
-      final errorMsg = e.toString();
+      final errorMsg = e.toString().replaceAll('Exception: ', '');
       if (errorMsg.contains('Sân đã được đặt vào thời điểm này') || 
           errorMsg.contains('overlap') || 
           errorMsg.contains('trùng lịch')) {
@@ -267,7 +276,7 @@ class _BookingScreenState extends State<BookingScreen> {
         _fetchBookedTimes(); // Refresh booked times
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Có lỗi xảy ra khi đặt sân: $errorMsg'), backgroundColor: Colors.red),
+          SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
         );
       }
     }

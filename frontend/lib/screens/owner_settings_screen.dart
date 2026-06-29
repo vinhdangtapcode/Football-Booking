@@ -14,6 +14,7 @@ class OwnerSettingsScreen extends StatefulWidget {
 class _OwnerSettingsScreenState extends State<OwnerSettingsScreen> {
   User? user;
   bool isLoading = true;
+  bool? _localIsModern;
 
   @override
   void initState() {
@@ -39,7 +40,7 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-    final isModern = themeProvider.isModernMode;
+    final isModern = _localIsModern ?? themeProvider.isModernMode;
 
     return Scaffold(
       backgroundColor: isModern ? Colors.black : Colors.white,
@@ -152,7 +153,17 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen> {
                         ),
                       ),
                       onTap: () {
-                        themeProvider.toggleTheme();
+                        setState(() {
+                          _localIsModern = !isModern;
+                        });
+                        Future.delayed(const Duration(milliseconds: 300), () {
+                          if (mounted) {
+                            themeProvider.toggleTheme();
+                            setState(() {
+                              _localIsModern = null;
+                            });
+                          }
+                        });
                       },
                     ),
                     Divider(color: isModern ? Colors.white12 : null),
@@ -171,6 +182,14 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen> {
                             user = updatedUser;
                           });
                         }
+                      },
+                    ),
+                    Divider(color: isModern ? Colors.white12 : null),
+                    ListTile(
+                      leading: Icon(Icons.account_balance_wallet, color: isModern ? Colors.white : Colors.green),
+                      title: Text('Ví tiền & Doanh thu cọc', style: TextStyle(color: isModern ? Colors.white : null)),
+                      onTap: () {
+                        Navigator.pushNamed(context, '/ownerRevenue');
                       },
                     ),
                     // Về chúng tôi
