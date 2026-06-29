@@ -66,6 +66,13 @@ public class DatabaseMigration implements CommandLineRunner {
                     "description TEXT, " +
                     "created_at TIMESTAMP DEFAULT NOW())");
 
+            // 6. Thêm cột type vào bảng notification (đa dạng hoá loại thông báo)
+            jdbcTemplate.execute("ALTER TABLE notification ADD COLUMN IF NOT EXISTS type VARCHAR(50) DEFAULT 'GENERAL'");
+
+            // 7. Thêm cột reminder_sent vào bảng booking (đánh dấu đã gửi nhắc nhở)
+            jdbcTemplate.execute("ALTER TABLE booking ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN DEFAULT FALSE");
+            jdbcTemplate.execute("ALTER TABLE booking ADD COLUMN IF NOT EXISTS review_sent BOOLEAN DEFAULT FALSE");
+
             System.out.println("====== [DATABASE MIGRATION SUCCESSFUL] ======");
         } catch (Exception e) {
             System.err.println("====== [DATABASE MIGRATION ERROR]: " + e.getMessage() + " ======");

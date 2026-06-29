@@ -8,4 +8,5 @@ import java.util.List;
 public interface RatingRepository extends JpaRepository<Rating, Integer> {
 	List<Rating> findByFieldId(Integer fieldId);
 	List<Rating> findByCustomerId(Integer customerId);
+	boolean existsByFieldIdAndCustomerId(Integer fieldId, Integer customerId);
 }
