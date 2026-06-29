@@ -221,15 +221,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         final success = await ApiService.settleOwner(ownerId);
         if (success) {
           _showSuccessSnackBar('Thanh toán đối soát thành công cho chủ sân $ownerName!');
-          await _loadRevenue();
-          await _loadOwnersRevenue();
+          await Future.wait([
+            _loadRevenue(),
+            _loadOwnersRevenue(),
+          ]);
         } else {
           _showErrorSnackBar('Thanh toán đối soát thất bại!');
         }
       } catch (e) {
         _showErrorSnackBar('Lỗi khi đối soát: $e');
       } finally {
-        setState(() => isLoading = false);
+        if (mounted) {
+          setState(() => isLoading = false);
+        }
       }
     }
   }

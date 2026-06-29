@@ -211,9 +211,32 @@ public class AdminController {
             return ResponseEntity.notFound().build();
         }
         SystemConfig config = configOpt.get();
-        config.setConfigValue(body.get("value"));
+        String newValue = body.get("value");
+        config.setConfigValue(newValue);
         systemConfigRepository.save(config);
-        logAdminAction("UPDATE_CONFIG", "CONFIG", 0, "Cập nhật cấu hình " + key + " thành " + body.get("value"));
+        logAdminAction("UPDATE_CONFIG", "CONFIG", 0, "Cập nhật cấu hình " + key + " thành " + newValue);
+
+        // Gửi thông báo bảo trì khi admin bật chế độ bảo trì
+        if ("maintenance_mode".equals(key) && "true".equals(newValue)) {
+            try {
+                String maintenanceMsg = "🔧 [Thông báo hệ thống] Ứng dụng sẽ tạm ngừng để bảo trì trong ít phút. Vui lòng hoàn tất công việc đang làm và thử lại sau.";
+                List<vn.footballfield.entity.User> allUsers = userRepository.findAll();
+                for (vn.footballfield.entity.User user : allUsers) {
+                    if ("ADMIN".equals(user.getRole())) continue; // Bỏ qua admin
+                    Notification noti = new Notification();
+                    noti.setUserId(user.getId());
+                    noti.setMessage(maintenanceMsg);
+                    noti.setType("SYSTEM_MAINTENANCE");
+                    notificationRepository.save(noti);
+                    if (user.getFcmToken() != null) {
+                        pushNotificationService.sendNotification(user.getFcmToken(), "Thông báo bảo trì hệ thống 🔧", maintenanceMsg);
+                    }
+                }
+            } catch (Exception e) {
+                System.out.println("Gửi thông báo bảo trì thất bại: " + e.getMessage());
+            }
+        }
+
         return ResponseEntity.ok(config);
     }
 
@@ -279,6 +302,7 @@ public class AdminController {
             Notification noti = new Notification();
             noti.setUserId(user.getId());
             noti.setMessage(title + ": " + message);
+            noti.setType("SYSTEM_BROADCAST");
             notificationsToSave.add(noti);
         }
         notificationRepository.saveAll(notificationsToSave);

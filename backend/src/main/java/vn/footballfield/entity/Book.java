@@ -57,6 +57,12 @@ public class Book {
 	@Column(name = "settled")
 	private Boolean settled = false;
 
+	@Column(name = "reminder_sent")
+	private Boolean reminderSent = false;
+
+	@Column(name = "review_sent")
+	private Boolean reviewSent = false;
+
 	// Getters and Setters (as you have them)
 	public Integer getId() { return id; }
 	public void setId(Integer id) { this.id = id; }
@@ -107,4 +113,10 @@ public class Book {
 
 	public Boolean getSettled() { return settled; }
 	public void setSettled(Boolean settled) { this.settled = settled; }
+
+	public Boolean getReminderSent() { return reminderSent; }
+	public void setReminderSent(Boolean reminderSent) { this.reminderSent = reminderSent; }
+
+	public Boolean getReviewSent() { return reviewSent; }
+	public void setReviewSent(Boolean reviewSent) { this.reviewSent = reviewSent; }
 }

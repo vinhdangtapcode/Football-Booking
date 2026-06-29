@@ -21,6 +21,9 @@ public class Notification {
 
     private Boolean read = false;
 
+    @Column(length = 50)
+    private String type = "GENERAL";
+
     // Getters and setters
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
@@ -32,5 +35,7 @@ public class Notification {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public Boolean getRead() { return read; }
     public void setRead(Boolean read) { this.read = read; }
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
 }
 

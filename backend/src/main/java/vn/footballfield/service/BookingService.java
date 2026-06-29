@@ -194,6 +194,7 @@ public class BookingService {
 		userNoti.setUserId(booking.getCustomerId());
 		String userMessage = "Bạn đã đặt sân '" + (field != null ? field.getName() : "") + "' thành công khung giờ " + slotStr + ".";
 		userNoti.setMessage(userMessage);
+		userNoti.setType("BOOKING_CONFIRMED");
 		notificationRepository.save(userNoti);
 
 		// Gửi push notification cho người dùng
@@ -217,6 +218,7 @@ public class BookingService {
 				ownerNoti.setUserId(ownerUser.getId());
 				String ownerMessage = "Sân '" + field.getName() + "' của bạn đã được " + customerName + " đặt khung giờ " + slotStr + ".";
 				ownerNoti.setMessage(ownerMessage);
+				ownerNoti.setType("BOOKING_CONFIRMED");
 				notificationRepository.save(ownerNoti);
 
 				// Gửi push notification cho chủ sân
@@ -346,6 +348,7 @@ public class BookingService {
 					ownerNoti.setUserId(ownerUser.getId());
 					String msg = "Lịch đặt sân '" + booking.getField().getName() + "' khung giờ " + slotTime + " đã bị hủy bởi khách hàng vào lúc " + cancelTimeStr + ".";
 					ownerNoti.setMessage(msg);
+					ownerNoti.setType("BOOKING_CANCELLED_BY_USER");
 					notificationRepository.save(ownerNoti);
 					
 					if (ownerUser.getFcmToken() != null) {
@@ -392,6 +395,28 @@ public class BookingService {
 		settlement.setSettledAt(LocalDateTime.now());
 		settlement.setBookingIds(bookingIdsStr);
 		settlementRepository.save(settlement);
+
+		// Gửi thông báo SETTLEMENT_DONE cho chủ sân
+		try {
+			if (!unsettledBookings.isEmpty() && unsettledBookings.get(0).getField() != null
+					&& unsettledBookings.get(0).getField().getOwner() != null) {
+				String ownerEmail = unsettledBookings.get(0).getField().getOwner().getEmail();
+				vn.footballfield.entity.User ownerU = userRepository.findByEmail(ownerEmail).orElse(null);
+				if (ownerU != null) {
+					String settlementMsg = "Admin đã hoàn tất thanh toán " + String.format("%,.0f", totalAmount) + " VND cho " + unsettledBookings.size() + " lịch đặt sân. Vui lòng kiểm tra tài khoản ngân hàng.";
+					Notification noti = new Notification();
+					noti.setUserId(ownerU.getId());
+					noti.setMessage(settlementMsg);
+					noti.setType("SETTLEMENT_DONE");
+					notificationRepository.save(noti);
+					if (ownerU.getFcmToken() != null) {
+						pushNotificationService.sendNotification(ownerU.getFcmToken(), "Đối soát hoàn tất 💰", settlementMsg);
+					}
+				}
+			}
+		} catch (Exception e) {
+			System.out.println("Gửi thông báo đối soát thất bại: " + e.getMessage());
+		}
 
 		for (Book booking : unsettledBookings) {
 			booking.setSettled(true);
@@ -442,6 +467,7 @@ public class BookingService {
 				userNoti.setUserId(customer.getId());
 				String msg = "Lịch đặt sân '" + fieldName + "' khung giờ " + slotTime + " đã bị hủy bởi Quản trị viên (Admin) vào lúc " + cancelTimeStr + ".";
 				userNoti.setMessage(msg);
+				userNoti.setType("BOOKING_CANCELLED_BY_ADMIN");
 				notificationRepository.save(userNoti);
 
 				if (customer.getFcmToken() != null) {
@@ -470,6 +496,7 @@ public class BookingService {
 					ownerNoti.setUserId(ownerUser.getId());
 					String msg = "Lịch đặt sân '" + fieldName + "' khung giờ " + slotTime + " đã bị hủy bởi Quản trị viên (Admin) vào lúc " + cancelTimeStr + ".";
 					ownerNoti.setMessage(msg);
+					ownerNoti.setType("BOOKING_CANCELLED_BY_ADMIN");
 					notificationRepository.save(ownerNoti);
 
 					if (ownerUser.getFcmToken() != null) {

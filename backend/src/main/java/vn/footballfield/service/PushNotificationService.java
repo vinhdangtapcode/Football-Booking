@@ -49,33 +49,35 @@ public class PushNotificationService {
             return false;
         }
 
-        try {
-            // Thêm Android Config để xử lý click action
-            com.google.firebase.messaging.AndroidConfig androidConfig = com.google.firebase.messaging.AndroidConfig
-                    .builder()
-                    .setNotification(com.google.firebase.messaging.AndroidNotification.builder()
-                            .setClickAction("FLUTTER_NOTIFICATION_CLICK")
-                            .build())
-                    .build();
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                // Thêm Android Config để xử lý click action
+                com.google.firebase.messaging.AndroidConfig androidConfig = com.google.firebase.messaging.AndroidConfig
+                        .builder()
+                        .setNotification(com.google.firebase.messaging.AndroidNotification.builder()
+                                .setClickAction("FLUTTER_NOTIFICATION_CLICK")
+                                .build())
+                        .build();
 
-            Message message = Message.builder()
-                    .setToken(fcmToken)
-                    .setNotification(Notification.builder()
-                            .setTitle(title)
-                            .setBody(body)
-                            .build())
-                    .setAndroidConfig(androidConfig)
-                    .putData("click_action", "FLUTTER_NOTIFICATION_CLICK")
-                    .putData("type", "notification")
-                    .build();
+                Message message = Message.builder()
+                        .setToken(fcmToken)
+                        .setNotification(Notification.builder()
+                                .setTitle(title)
+                                .setBody(body)
+                                .build())
+                        .setAndroidConfig(androidConfig)
+                        .putData("click_action", "FLUTTER_NOTIFICATION_CLICK")
+                        .putData("type", "notification")
+                        .build();
 
-            String response = FirebaseMessaging.getInstance().send(message);
-            System.out.println("Push notification sent successfully: " + response);
-            return true;
-        } catch (Exception e) {
-            System.err.println("Failed to send push notification: " + e.getMessage());
-            return false;
-        }
+                String response = FirebaseMessaging.getInstance().send(message);
+                System.out.println("Push notification sent successfully: " + response);
+            } catch (Exception e) {
+                System.err.println("Failed to send push notification: " + e.getMessage());
+            }
+        });
+
+        return true;
     }
 
     /**
@@ -94,33 +96,35 @@ public class PushNotificationService {
             return false;
         }
 
-        try {
-            // Thêm Android Config để xử lý click action
-            com.google.firebase.messaging.AndroidConfig androidConfig = com.google.firebase.messaging.AndroidConfig
-                    .builder()
-                    .setNotification(com.google.firebase.messaging.AndroidNotification.builder()
-                            .setClickAction("FLUTTER_NOTIFICATION_CLICK")
-                            .build())
-                    .build();
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                // Thêm Android Config để xử lý click action
+                com.google.firebase.messaging.AndroidConfig androidConfig = com.google.firebase.messaging.AndroidConfig
+                        .builder()
+                        .setNotification(com.google.firebase.messaging.AndroidNotification.builder()
+                                .setClickAction("FLUTTER_NOTIFICATION_CLICK")
+                                .build())
+                        .build();
 
-            Message.Builder messageBuilder = Message.builder()
-                    .setToken(fcmToken)
-                    .setNotification(Notification.builder()
-                            .setTitle(title)
-                            .setBody(body)
-                            .build())
-                    .setAndroidConfig(androidConfig);
+                Message.Builder messageBuilder = Message.builder()
+                        .setToken(fcmToken)
+                        .setNotification(Notification.builder()
+                                .setTitle(title)
+                                .setBody(body)
+                                .build())
+                        .setAndroidConfig(androidConfig);
 
-            if (data != null) {
-                messageBuilder.putAllData(data);
+                if (data != null) {
+                    messageBuilder.putAllData(data);
+                }
+
+                String response = FirebaseMessaging.getInstance().send(messageBuilder.build());
+                System.out.println("Push notification sent successfully: " + response);
+            } catch (Exception e) {
+                System.err.println("Failed to send push notification: " + e.getMessage());
             }
+        });
 
-            String response = FirebaseMessaging.getInstance().send(messageBuilder.build());
-            System.out.println("Push notification sent successfully: " + response);
-            return true;
-        } catch (Exception e) {
-            System.err.println("Failed to send push notification: " + e.getMessage());
-            return false;
-        }
+        return true;
     }
 }
