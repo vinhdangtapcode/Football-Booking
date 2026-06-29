@@ -52,6 +52,13 @@ public class BookingService {
 	private String baseUrl;
 
 	private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+	private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+	private static final DateTimeFormatter HOUR_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+
+	private String formatBookingSlot(LocalDateTime from, LocalDateTime to) {
+		if (from == null || to == null) return "";
+		return from.format(HOUR_FORMATTER) + " - " + to.format(HOUR_FORMATTER) + " ngày " + from.format(DATE_FORMATTER);
+	}
 
 	public Book createBooking(@Valid Book booking, Integer customerId) {
 		Field fieldFromRequest = booking.getField();
@@ -179,15 +186,13 @@ public class BookingService {
 		}
 		
 		// Format thời gian để hiển thị đẹp hơn
-		String fromTimeStr = booking.getFromTime() != null ? booking.getFromTime().format(TIME_FORMATTER) : "";
-		String toTimeStr = booking.getToTime() != null ? booking.getToTime().format(TIME_FORMATTER) : "";
+		String slotStr = formatBookingSlot(booking.getFromTime(), booking.getToTime());
 		String customerName = customer != null ? customer.getName() : "Khách hàng";
 
 		// Tạo thông báo cho người dùng
 		Notification userNoti = new Notification();
 		userNoti.setUserId(booking.getCustomerId());
-		String userMessage = "Bạn đã đặt sân '" + (field != null ? field.getName() : "") + "' thành công từ " + fromTimeStr + " đến "
-				+ toTimeStr + ".";
+		String userMessage = "Bạn đã đặt sân '" + (field != null ? field.getName() : "") + "' thành công khung giờ " + slotStr + ".";
 		userNoti.setMessage(userMessage);
 		notificationRepository.save(userNoti);
 
@@ -196,7 +201,8 @@ public class BookingService {
 			pushNotificationService.sendNotification(
 					customer.getFcmToken(),
 					"Đặt sân thành công! ⚽",
-					"Bạn đã đặt sân '" + (field != null ? field.getName() : "") + "' từ " + fromTimeStr + " đến " + toTimeStr);
+					"Bạn đã đặt sân '" + (field != null ? field.getName() : "") + "' khung giờ " + slotStr
+			);
 		}
 
 		// Tạo thông báo cho chủ sân
@@ -209,8 +215,7 @@ public class BookingService {
 			if (ownerUser != null) {
 				Notification ownerNoti = new Notification();
 				ownerNoti.setUserId(ownerUser.getId());
-				String ownerMessage = "Sân '" + field.getName() + "' của bạn đã được " + customerName + " đặt từ "
-						+ fromTimeStr + " đến " + toTimeStr + ".";
+				String ownerMessage = "Sân '" + field.getName() + "' của bạn đã được " + customerName + " đặt khung giờ " + slotStr + ".";
 				ownerNoti.setMessage(ownerMessage);
 				notificationRepository.save(ownerNoti);
 
@@ -219,8 +224,8 @@ public class BookingService {
 					pushNotificationService.sendNotification(
 							ownerUser.getFcmToken(),
 							"Có khách đặt sân mới! 🎉",
-							customerName + " đã đặt sân '" + field.getName() + "' từ " + fromTimeStr + " đến "
-									+ toTimeStr);
+							customerName + " đã đặt sân '" + field.getName() + "' khung giờ " + slotStr
+					);
 				}
 			}
 		}
@@ -232,8 +237,7 @@ public class BookingService {
 					field.getOwner().getId(),
 					field.getId(),
 					field.getName(),
-					fromTimeStr,
-					toTimeStr,
+					slotStr,
 					customerName);
 		}
 	}
@@ -335,9 +339,12 @@ public class BookingService {
 					ownerUser = userRepository.findByEmail(owner.getEmail()).orElse(null);
 				}
 				if (ownerUser != null) {
+					String slotTime = formatBookingSlot(booking.getFromTime(), booking.getToTime());
+					String cancelTimeStr = LocalDateTime.now().format(TIME_FORMATTER);
+
 					Notification ownerNoti = new Notification();
 					ownerNoti.setUserId(ownerUser.getId());
-					String msg = "Lịch đặt sân '" + booking.getField().getName() + "' mã #" + booking.getId() + " đã bị hủy bởi khách hàng.";
+					String msg = "Lịch đặt sân '" + booking.getField().getName() + "' khung giờ " + slotTime + " đã bị hủy bởi khách hàng vào lúc " + cancelTimeStr + ".";
 					ownerNoti.setMessage(msg);
 					notificationRepository.save(ownerNoti);
 					
@@ -396,5 +403,88 @@ public class BookingService {
 
 	public List<vn.footballfield.entity.Settlement> getSettlementsByOwner(Integer ownerId) {
 		return settlementRepository.findByOwnerIdOrderBySettledAtDesc(ownerId);
+	}
+
+
+
+	public Book adminCancelBooking(Integer bookingId) {
+		Book booking = bookingRepository.findById(bookingId)
+				.orElseThrow(() -> new RuntimeException("Không tìm thấy lịch đặt sân này"));
+
+		if ("CANCELLED".equals(booking.getStatus()) || "EXPIRED".equals(booking.getStatus())) {
+			throw new RuntimeException("Lịch đặt sân đã ở trạng thái hủy hoặc hết hạn");
+		}
+
+		// Hủy trên PayOS nếu đang chờ thanh toán
+		if ("PENDING_PAYMENT".equals(booking.getStatus())) {
+			try {
+				if (booking.getPaymentLinkId() != null) {
+					payOS.paymentRequests().cancel(booking.getId().longValue(), "Admin chu dong huy");
+				}
+			} catch (Exception e) {
+				System.out.println("Hủy link PayOS thất bại: " + e.getMessage());
+			}
+			booking.setTotalPrice(0.0);
+		}
+
+		booking.setStatus("CANCELLED");
+		Book savedBooking = bookingRepository.save(booking);
+
+		String slotTime = formatBookingSlot(booking.getFromTime(), booking.getToTime());
+		String fieldName = booking.getField() != null ? booking.getField().getName() : "Sân bóng";
+
+		// 1. Gửi thông báo cho người đặt (Khách hàng)
+		try {
+			vn.footballfield.entity.User customer = userRepository.findById(booking.getCustomerId()).orElse(null);
+			if (customer != null) {
+				String cancelTimeStr = LocalDateTime.now().format(TIME_FORMATTER);
+				Notification userNoti = new Notification();
+				userNoti.setUserId(customer.getId());
+				String msg = "Lịch đặt sân '" + fieldName + "' khung giờ " + slotTime + " đã bị hủy bởi Quản trị viên (Admin) vào lúc " + cancelTimeStr + ".";
+				userNoti.setMessage(msg);
+				notificationRepository.save(userNoti);
+
+				if (customer.getFcmToken() != null) {
+					pushNotificationService.sendNotification(
+							customer.getFcmToken(),
+							"Lịch đặt sân bị hủy bởi Admin ❌",
+							msg
+					);
+				}
+			}
+		} catch (Exception e) {
+			System.out.println("Gửi thông báo hủy sân cho khách hàng thất bại: " + e.getMessage());
+		}
+
+		// 2. Gửi thông báo cho chủ sân
+		try {
+			if (booking.getField() != null && booking.getField().getOwner() != null) {
+				vn.footballfield.entity.Owner owner = booking.getField().getOwner();
+				vn.footballfield.entity.User ownerUser = null;
+				if (owner != null && owner.getEmail() != null) {
+					ownerUser = userRepository.findByEmail(owner.getEmail()).orElse(null);
+				}
+				if (ownerUser != null) {
+					String cancelTimeStr = LocalDateTime.now().format(TIME_FORMATTER);
+					Notification ownerNoti = new Notification();
+					ownerNoti.setUserId(ownerUser.getId());
+					String msg = "Lịch đặt sân '" + fieldName + "' khung giờ " + slotTime + " đã bị hủy bởi Quản trị viên (Admin) vào lúc " + cancelTimeStr + ".";
+					ownerNoti.setMessage(msg);
+					notificationRepository.save(ownerNoti);
+
+					if (ownerUser.getFcmToken() != null) {
+						pushNotificationService.sendNotification(
+								ownerUser.getFcmToken(),
+								"Lịch đặt sân bị hủy bởi Admin ❌",
+								msg
+						);
+					}
+				}
+			}
+		} catch (Exception e) {
+			System.out.println("Gửi thông báo hủy sân cho chủ sân thất bại: " + e.getMessage());
+		}
+
+		return savedBooking;
 	}
 }

@@ -25,6 +25,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	@Autowired
 	private JwtUtil jwtUtil;
 
+	@Autowired
+	private vn.footballfield.repository.UserRepository userRepository;
+
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
 			throws ServletException, IOException {
@@ -48,6 +51,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 				if (jwtUtil.validateToken(jwt)) {
 					email = jwtUtil.getEmailFromToken(jwt);
 					String role = jwtUtil.getRoleFromToken(jwt);
+
+					if (email != null) {
+						var userOpt = userRepository.findByEmail(email);
+						if (userOpt.isPresent() && Boolean.TRUE.equals(userOpt.get().getIsLocked())) {
+							response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+							response.setContentType("application/json;charset=UTF-8");
+							response.getWriter().write("{\"message\":\"Tài khoản đã bị khoá bởi quản trị viên\"}");
+							return;
+						}
+					}
 
 					if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 						UsernamePasswordAuthenticationToken authentication =

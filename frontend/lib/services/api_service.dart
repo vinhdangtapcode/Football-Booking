@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:http/http.dart' as http;
+import 'package:http/http.dart' as original_http;
+import '../main.dart' show navigatorKey;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../models/field.dart';
@@ -777,9 +778,9 @@ class ApiService {
       if (_token != null) {
         request.headers['Authorization'] = 'Bearer $_token';
       }
-      request.files.add(await http.MultipartFile.fromPath('file', imageFile.path));
+      request.files.add(await original_http.MultipartFile.fromPath('file', imageFile.path));
       final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
+      final response = await original_http.Response.fromStream(streamedResponse);
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return resolveImageUrl(data['url']);
@@ -801,10 +802,10 @@ class ApiService {
         request.headers['Authorization'] = 'Bearer $_token';
       }
       for (var file in imageFiles) {
-        request.files.add(await http.MultipartFile.fromPath('files', file.path));
+        request.files.add(await original_http.MultipartFile.fromPath('files', file.path));
       }
       final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
+      final response = await original_http.Response.fromStream(streamedResponse);
       if (response.statusCode == 200) {
         List<dynamic> data = jsonDecode(response.body);
         return data.map((img) {
@@ -946,5 +947,268 @@ class ApiService {
     }
   }
 
+  // Admin dashboard stats
+  static Future<Map<String, dynamic>> getAdminDashboardStats() async {
+    final url = Uri.parse("$baseUrl/api/admin/dashboard-stats");
+    try {
+      final response = await http.get(url, headers: headers);
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      }
+    } catch (e) {
+      print("Error fetching dashboard stats: $e");
+    }
+    return {};
+  }
+
+  // All bookings for admin
+  static Future<List<dynamic>> getAdminAllBookings() async {
+    final url = Uri.parse("$baseUrl/api/admin/bookings");
+    try {
+      final response = await http.get(url, headers: headers);
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      }
+    } catch (e) {
+      print("Error fetching admin bookings: $e");
+    }
+    return [];
+  }
+
+
+
+  // Cancel booking
+  static Future<bool> adminCancelBooking(int bookingId) async {
+    final url = Uri.parse("$baseUrl/api/admin/bookings/$bookingId/cancel");
+    try {
+      final response = await http.post(url, headers: headers);
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error cancelling booking: $e");
+    }
+    return false;
+  }
+
+  // Broadcast notification to all users
+  static Future<bool> adminBroadcastNotification(String title, String body) async {
+    final url = Uri.parse("$baseUrl/api/admin/notifications/broadcast");
+    try {
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode({
+          'title': title,
+          'body': body,
+        }),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error broadcasting notification: $e");
+    }
+    return false;
+  }
+
+  // Check if system is currently in maintenance mode
+  static Future<bool> checkMaintenanceStatus() async {
+    final url = Uri.parse("$baseUrl/api/auth/maintenance-status");
+    try {
+      final response = await original_http.get(url, headers: {"Content-Type": "application/json"});
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['maintenance'] ?? false;
+      }
+    } catch (e) {
+      print("Error checking maintenance status: $e");
+    }
+    return true; // Assume maintenance if network error occurs
+  }
+
+  // Toggle user lock
+  static Future<bool> adminToggleUserLock(int userId) async {
+    final url = Uri.parse("$baseUrl/api/admin/users/$userId/toggle-lock");
+    try {
+      final response = await http.patch(url, headers: headers);
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error toggling user lock: $e");
+    }
+    return false;
+  }
+
+  // Toggle field availability
+  static Future<bool> adminToggleFieldAvailability(int fieldId) async {
+    final url = Uri.parse("$baseUrl/api/admin/fields/$fieldId/toggle-availability");
+    try {
+      final response = await http.patch(url, headers: headers);
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error toggling field availability: $e");
+    }
+    return false;
+  }
+
+  // Get system config
+  static Future<List<dynamic>> getSystemConfig() async {
+    final url = Uri.parse("$baseUrl/api/admin/config");
+    try {
+      final response = await http.get(url, headers: headers);
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      }
+    } catch (e) {
+      print("Error fetching config: $e");
+    }
+    return [];
+  }
+
+  // Update system config
+  static Future<bool> updateSystemConfig(String key, String value) async {
+    final url = Uri.parse("$baseUrl/api/admin/config/$key");
+    try {
+      final response = await http.put(
+        url,
+        headers: headers,
+        body: jsonEncode({"value": value}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error updating config: $e");
+    }
+    return false;
+  }
+
+  // Get audit log
+  static Future<List<dynamic>> getAdminAuditLogs() async {
+    final url = Uri.parse("$baseUrl/api/admin/audit-log");
+    try {
+      final response = await http.get(url, headers: headers);
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      }
+    } catch (e) {
+      print("Error fetching audit logs: $e");
+    }
+    return [];
+  }
+
+  // Owners list (admin view)
+  static Future<List<dynamic>> getAdminOwners() async {
+    final url = Uri.parse("$baseUrl/api/admin/owners");
+    try {
+      final response = await http.get(url, headers: headers);
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      }
+    } catch (e) {
+      print("Error fetching admin owners: $e");
+    }
+    return [];
+  }
+
+  // Create Owner
+  static Future<bool> adminCreateOwner(Map<String, dynamic> data) async {
+    final url = Uri.parse("$baseUrl/api/admin/owners");
+    try {
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode(data),
+      );
+      return response.statusCode == 201;
+    } catch (e) {
+      print("Error creating owner: $e");
+    }
+    return false;
+  }
+
+  // Update Owner
+  static Future<bool> adminUpdateOwner(int id, Map<String, dynamic> data) async {
+    final url = Uri.parse("$baseUrl/api/admin/owners/$id");
+    try {
+      final response = await http.put(
+        url,
+        headers: headers,
+        body: jsonEncode(data),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error updating owner: $e");
+    }
+    return false;
+  }
+
+  // Delete Owner
+  static Future<bool> adminDeleteOwner(int id) async {
+    final url = Uri.parse("$baseUrl/api/admin/owners/$id");
+    try {
+      final response = await http.delete(url, headers: headers);
+      return response.statusCode == 204 || response.statusCode == 200;
+    } catch (e) {
+      print("Error deleting owner: $e");
+    }
+    return false;
+  }
+
   // ===== END IMAGE UPLOAD METHODS =====
 }
+
+class http {
+  static void _check(original_http.Response res) {
+    if (res.statusCode == 503) {
+      try {
+        final body = jsonDecode(res.body);
+        if (body is Map && body['maintenance'] == true) {
+          navigatorKey.currentState?.pushNamedAndRemoveUntil('/maintenance', (route) => false);
+        }
+      } catch (_) {}
+    }
+  }
+
+  static Future<original_http.Response> get(Uri url, {Map<String, String>? headers}) async {
+    final res = await original_http.get(url, headers: headers);
+    _check(res);
+    return res;
+  }
+
+  static Future<original_http.Response> post(Uri url, {Map<String, String>? headers, Object? body, Encoding? encoding}) async {
+    final res = await original_http.post(url, headers: headers, body: body, encoding: encoding);
+    _check(res);
+    return res;
+  }
+
+  static Future<original_http.Response> put(Uri url, {Map<String, String>? headers, Object? body, Encoding? encoding}) async {
+    final res = await original_http.put(url, headers: headers, body: body, encoding: encoding);
+    _check(res);
+    return res;
+  }
+
+  static Future<original_http.Response> patch(Uri url, {Map<String, String>? headers, Object? body, Encoding? encoding}) async {
+    final res = await original_http.patch(url, headers: headers, body: body, encoding: encoding);
+    _check(res);
+    return res;
+  }
+
+  static Future<original_http.Response> delete(Uri url, {Map<String, String>? headers, Object? body, Encoding? encoding}) async {
+    final res = await original_http.delete(url, headers: headers, body: body, encoding: encoding);
+    _check(res);
+    return res;
+  }
+
+  static original_http.MultipartRequest MultipartRequest(String method, Uri url) {
+    return _InterceptedMultipartRequest(method, url);
+  }
+}
+
+class _InterceptedMultipartRequest extends original_http.MultipartRequest {
+  _InterceptedMultipartRequest(String method, Uri url) : super(method, url);
+
+  @override
+  Future<original_http.StreamedResponse> send() async {
+    final res = await super.send();
+    if (res.statusCode == 503) {
+      navigatorKey.currentState?.pushNamedAndRemoveUntil('/maintenance', (route) => false);
+    }
+    return res;
+  }
+}
+

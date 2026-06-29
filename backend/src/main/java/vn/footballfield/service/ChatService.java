@@ -174,7 +174,7 @@ public class ChatService {
      */
     @Transactional
     public void sendBookingNotificationMessage(Integer userId, Integer ownerId, Integer fieldId,
-            String fieldName, String fromTime, String toTime, String customerName) {
+            String fieldName, String slotTime, String customerName) {
         try {
             // Get or create conversation
             Conversation conversation = getOrCreateConversation(userId, ownerId, fieldId);
@@ -183,7 +183,7 @@ public class ChatService {
             String messageContent = "🎉 Xác nhận đặt sân thành công!\n\n" +
                     "📍 Sân: " + fieldName + "\n" +
                     "👤 Khách hàng: " + customerName + "\n" +
-                    "🕐 Thời gian: " + fromTime + " - " + toTime + "\n\n" +
+                    "🕐 Thời gian: " + slotTime + "\n\n" +
                     "Cảm ơn quý khách đã đặt sân! Hẹn gặp bạn tại sân.";
 
             // Gửi từ phía OWNER để người đặt sân nhận được thông báo

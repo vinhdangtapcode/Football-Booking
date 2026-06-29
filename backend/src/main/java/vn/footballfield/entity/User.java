@@ -49,6 +49,9 @@ public class User {
 	@Column(name = "fcm_token")
 	private String fcmToken;
 
+	@Column(name = "is_locked")
+	private Boolean isLocked = false;
+
 	// Getters and Setters
 	public Integer getId() {
 		return id;
@@ -120,5 +123,13 @@ public class User {
 
 	public void setFcmToken(String fcmToken) {
 		this.fcmToken = fcmToken;
+	}
+
+	public Boolean getIsLocked() {
+		return isLocked;
+	}
+
+	public void setIsLocked(Boolean isLocked) {
+		this.isLocked = isLocked;
 	}
 }

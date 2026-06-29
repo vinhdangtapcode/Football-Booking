@@ -35,6 +35,7 @@ import 'models/booking.dart';
 import 'screens/splash_screen.dart';
 import 'screens/payment_screen.dart';
 import 'screens/owner_revenue_screen.dart';
+import 'screens/maintenance_screen.dart';
 
 // Global RouteObserver để lắng nghe navigation events
 final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
@@ -105,6 +106,7 @@ class FootballBookingApp extends StatelessWidget {
         '/adminFieldForm': (context) => AdminAddEditFieldScreen(),
         '/chat': (context) => ChatScreen(),
         '/payment': (context) => PaymentScreen(booking: ModalRoute.of(context)!.settings.arguments as Booking),
+        '/maintenance': (context) => const MaintenanceScreen(),
       },
     );
   }
