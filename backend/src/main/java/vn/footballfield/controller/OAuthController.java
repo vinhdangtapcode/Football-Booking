@@ -24,6 +24,17 @@ public class OAuthController {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private vn.footballfield.repository.SystemConfigRepository systemConfigRepository;
+
+    @GetMapping("/maintenance-status")
+    public ResponseEntity<?> getMaintenanceStatus() {
+        boolean maintenance = systemConfigRepository.findById("maintenance_mode")
+                .map(config -> "true".equalsIgnoreCase(config.getConfigValue()))
+                .orElse(false);
+        return ResponseEntity.ok(java.util.Map.of("maintenance", maintenance));
+    }
+
     /**
      * Authenticate user with Google ID token
      * 

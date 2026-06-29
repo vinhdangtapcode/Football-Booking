@@ -4,8 +4,9 @@ class User {
   String email;
   String? phone;
   String role;
+  bool isLocked;
 
-  User({this.id, required this.name, required this.email, this.phone, required this.role});
+  User({this.id, required this.name, required this.email, this.phone, required this.role, this.isLocked = false});
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
@@ -14,6 +15,7 @@ class User {
       email: json['email'] ?? "",
       phone: json['phone'],
       role: json['role'] ?? "USER",
+      isLocked: json['isLocked'] ?? false,
     );
   }
 
@@ -24,6 +26,7 @@ class User {
       'email': email,
       'phone': phone,
       'role': role,
+      'isLocked': isLocked,
     };
   }
 }

@@ -16,7 +16,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   List<User> users = [];
   bool isLoading = true;
   String searchQuery = '';
-  int _currentIndex = 0; // Thêm biến để theo dõi tab hiện tại
+  int _currentIndex = 0; // 0: Tổng quan, 1: Quản lý sân, 2: Đặt sân, 3: Người dùng, 4: Ví trung gian, 5: Hệ thống
 
   double totalPlatformHeld = 0.0;
   List<dynamic> allBookings = [];
@@ -26,6 +26,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   List<dynamic> ownersRevenue = [];
   bool isOwnersLoading = false;
 
+  // New state variables for Admin Upgrades
+  Map<String, dynamic> dashboardStats = {};
+  bool isDashboardStatsLoading = false;
+
+  List<dynamic> configs = [];
+  bool isConfigsLoading = false;
+
+  List<dynamic> auditLogs = [];
+  bool isAuditLogsLoading = false;
+
+  List<dynamic> bookingsList = [];
+  bool isBookingsLoading = false;
+  String selectedBookingStatus = 'ALL';
+
+  List<dynamic> owners = [];
+  int _userSubTab = 0; // 0: Khách hàng, 1: Thực thể Chủ sân (Owner)
+  int _systemSubTab = 0; // 0: Cấu hình, 1: Gửi thông báo, 2: Nhật ký
+
   @override
   void initState() {
     super.initState();
@@ -33,6 +51,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     _loadUsers();
     _loadRevenue();
     _loadOwnersRevenue();
+    _loadDashboardStats();
+    _loadConfigs();
+    _loadAuditLogs();
+    _loadOwnersList();
+    _loadBookingsList();
   }
 
   Future<void> _loadStadiums() async {
@@ -99,6 +122,76 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     } catch (e) {
       setState(() => isOwnersLoading = false);
       _showErrorSnackBar('Lỗi khi tải doanh thu chủ sân: $e');
+    }
+  }
+
+  Future<void> _loadDashboardStats() async {
+    setState(() => isDashboardStatsLoading = true);
+    try {
+      final data = await ApiService.getAdminDashboardStats();
+      setState(() {
+        dashboardStats = data;
+        isDashboardStatsLoading = false;
+      });
+    } catch (e) {
+      setState(() => isDashboardStatsLoading = false);
+      _showErrorSnackBar('Lỗi khi tải thống kê tổng quan: $e');
+    }
+  }
+
+  Future<void> _loadConfigs() async {
+    setState(() => isConfigsLoading = true);
+    try {
+      final data = await ApiService.getSystemConfig();
+      setState(() {
+        configs = data;
+        isConfigsLoading = false;
+      });
+    } catch (e) {
+      setState(() => isConfigsLoading = false);
+      _showErrorSnackBar('Lỗi khi tải cấu hình hệ thống: $e');
+    }
+  }
+
+  Future<void> _loadAuditLogs() async {
+    setState(() => isAuditLogsLoading = true);
+    try {
+      final data = await ApiService.getAdminAuditLogs();
+      setState(() {
+        auditLogs = data;
+        isAuditLogsLoading = false;
+      });
+    } catch (e) {
+      setState(() => isAuditLogsLoading = false);
+      _showErrorSnackBar('Lỗi khi tải nhật ký hoạt động: $e');
+    }
+  }
+
+  Future<void> _loadOwnersList() async {
+    setState(() => isOwnersLoading = true);
+    try {
+      final data = await ApiService.getAdminOwners();
+      setState(() {
+        owners = data;
+        isOwnersLoading = false;
+      });
+    } catch (e) {
+      setState(() => isOwnersLoading = false);
+      _showErrorSnackBar('Lỗi khi tải danh sách chủ sân: $e');
+    }
+  }
+
+  Future<void> _loadBookingsList() async {
+    setState(() => isBookingsLoading = true);
+    try {
+      final data = await ApiService.getAdminAllBookings();
+      setState(() {
+        bookingsList = data;
+        isBookingsLoading = false;
+      });
+    } catch (e) {
+      setState(() => isBookingsLoading = false);
+      _showErrorSnackBar('Lỗi khi tải danh sách lịch đặt: $e');
     }
   }
 
@@ -236,6 +329,206 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         }
       } catch (e) {
         _showErrorSnackBar('Lỗi khi xóa người dùng: $e');
+      }
+    }
+  }
+
+  Future<void> _toggleUserLock(User user) async {
+    if (user.id == null) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(user.isLocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'),
+        content: Text('Bạn có chắc chắn muốn ${user.isLocked ? "mở khóa" : "khóa"} tài khoản "${user.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.orange),
+            child: const Text('Xác nhận'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => isLoading = true);
+      try {
+        final success = await ApiService.adminToggleUserLock(user.id!);
+        if (success) {
+          _showSuccessSnackBar('${user.isLocked ? "Mở khóa" : "Khóa"} tài khoản thành công!');
+          await _loadUsers();
+          await _loadDashboardStats();
+        } else {
+          _showErrorSnackBar('Thao tác thất bại! Bạn không thể tự khóa chính mình hoặc các tài khoản Admin khác.');
+        }
+      } catch (e) {
+        _showErrorSnackBar('Lỗi: $e');
+      } finally {
+        setState(() => isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _toggleStadiumAvailability(Field stadium) async {
+    if (stadium.id == null) return;
+    setState(() => isLoading = true);
+    try {
+      final success = await ApiService.adminToggleFieldAvailability(stadium.id!);
+      if (success) {
+        _showSuccessSnackBar('Thay đổi trạng thái hoạt động của sân thành công!');
+        await _loadStadiums();
+        await _loadDashboardStats();
+      } else {
+        _showErrorSnackBar('Cập nhật trạng thái sân thất bại!');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Lỗi: $e');
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _showAddEditOwnerDialog([Map<String, dynamic>? owner]) async {
+    final isEdit = owner != null;
+    final nameController = TextEditingController(text: isEdit ? owner['ownerName'] : '');
+    final emailController = TextEditingController(text: isEdit ? owner['email'] : '');
+    final phoneController = TextEditingController(text: isEdit ? owner['contactNumber'] : '');
+    final bankController = TextEditingController(text: isEdit ? (owner['bankName'] ?? '') : '');
+    final accNoController = TextEditingController(text: isEdit ? (owner['bankAccountNo'] ?? '') : '');
+    final accNameController = TextEditingController(text: isEdit ? (owner['bankAccountName'] ?? '') : '');
+    final formKey = GlobalKey<FormState>();
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isEdit ? 'Cập nhật chủ sân' : 'Thêm chủ sân mới'),
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Tên chủ sân *'),
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Nhập tên chủ sân' : null,
+                ),
+                TextFormField(
+                  controller: emailController,
+                  decoration: const InputDecoration(labelText: 'Email liên hệ *'),
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Nhập email liên hệ' : null,
+                ),
+                TextFormField(
+                  controller: phoneController,
+                  decoration: const InputDecoration(labelText: 'Số điện thoại'),
+                ),
+                const SizedBox(height: 12),
+                const Divider(),
+                const Text('Thông tin ngân hàng (Không bắt buộc)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                TextFormField(
+                  controller: bankController,
+                  decoration: const InputDecoration(labelText: 'Tên ngân hàng (Vietcombank, MB...)'),
+                ),
+                TextFormField(
+                  controller: accNoController,
+                  decoration: const InputDecoration(labelText: 'Số tài khoản'),
+                  keyboardType: TextInputType.number,
+                ),
+                TextFormField(
+                  controller: accNameController,
+                  decoration: const InputDecoration(labelText: 'Chủ tài khoản (VIẾT HOA KHÔNG DẤU)'),
+                  textCapitalization: TextCapitalization.characters,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                final data = {
+                  'ownerName': nameController.text.trim(),
+                  'email': emailController.text.trim(),
+                  'contactNumber': phoneController.text.trim(),
+                  'bankName': bankController.text.trim(),
+                  'bankAccountNo': accNoController.text.trim(),
+                  'bankAccountName': accNameController.text.trim().toUpperCase(),
+                };
+                setState(() => isLoading = true);
+                try {
+                  bool success;
+                  if (isEdit) {
+                    success = await ApiService.adminUpdateOwner(owner['id'], data);
+                  } else {
+                    success = await ApiService.adminCreateOwner(data);
+                  }
+                  if (success) {
+                    _showSuccessSnackBar(isEdit ? 'Cập nhật thành công!' : 'Tạo mới chủ sân thành công!');
+                    Navigator.pop(context);
+                    await _loadOwnersList();
+                    await _loadDashboardStats();
+                  } else {
+                    _showErrorSnackBar('Thao tác thất bại!');
+                  }
+                } catch (e) {
+                  _showErrorSnackBar('Lỗi: $e');
+                } finally {
+                  setState(() => isLoading = false);
+                }
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.green),
+            child: const Text('Lưu'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteOwnerEntity(int ownerId, String name) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xác nhận xóa'),
+        content: Text('Bạn có chắc chắn muốn xóa chủ sân "$name"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => isLoading = true);
+      try {
+        final success = await ApiService.adminDeleteOwner(ownerId);
+        if (success) {
+          _showSuccessSnackBar('Xóa chủ sân thành công!');
+          await _loadOwnersList();
+          await _loadDashboardStats();
+        } else {
+          _showErrorSnackBar('Không thể xóa chủ sân!');
+        }
+      } catch (e) {
+        _showErrorSnackBar('Lỗi: $e');
+      } finally {
+        setState(() => isLoading = false);
       }
     }
   }
@@ -580,14 +873,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       children: [
         // Statistics cards
         Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 4.0),
           child: Row(
             children: [
               Expanded(
                 child: Card(
                   color: Colors.blue.shade100,
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(10.0),
                     child: Column(
                       children: [
                         const Icon(Icons.sports_soccer, color: Colors.blue, size: 30),
@@ -607,7 +900,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 child: Card(
                   color: Colors.green.shade100,
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(10.0),
                     child: Column(
                       children: [
                         const Icon(Icons.check_circle, color: Colors.green, size: 30),
@@ -754,6 +1047,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   case 'delete':
                                     _deleteStadium(stadium);
                                     break;
+                                  case 'history':
+                                    final stBookings = allBookings.where((b) => b['field']?['id'] == stadium.id).toList();
+                                    _showBookingHistoryDialog(
+                                      title: 'Lịch sử đặt: ${stadium.name}',
+                                      bookings: stBookings,
+                                    );
+                                    break;
                                 }
                               },
                               itemBuilder: (context) => [
@@ -764,6 +1064,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                       Icon(Icons.edit, color: Colors.blue),
                                       SizedBox(width: 8),
                                       Text('Chỉnh sửa'),
+                                    ],
+                                  ),
+                                ),
+                                const PopupMenuItem(
+                                  value: 'history',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.history, color: Colors.green),
+                                      SizedBox(width: 8),
+                                      Text('Lịch sử đặt sân'),
                                     ],
                                   ),
                                 ),
@@ -793,11 +1103,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       children: [
         // User statistics card
         Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 4.0),
           child: Card(
             color: Colors.purple.shade100,
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(10.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
@@ -931,6 +1241,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   case 'delete':
                                     _deleteUser(user);
                                     break;
+                                  case 'history':
+                                    List<dynamic> userBookings = [];
+                                    if (user.role == 'OWNER') {
+                                      userBookings = allBookings.where((b) => b['field']?['owner']?['email'] == user.email).toList();
+                                    } else {
+                                      userBookings = allBookings.where((b) => b['customer']?['email'] == user.email || b['customerId'] == user.id).toList();
+                                    }
+                                    _showBookingHistoryDialog(
+                                      title: user.role == 'OWNER' ? 'Lịch sử đặt các sân của: ${user.name}' : 'Lịch sử đặt của: ${user.name}',
+                                      bookings: userBookings,
+                                    );
+                                    break;
                                 }
                               },
                               itemBuilder: (context) => [
@@ -941,6 +1263,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                       Icon(Icons.edit, color: Colors.blue),
                                       SizedBox(width: 8),
                                       Text('Chỉnh sửa'),
+                                    ],
+                                  ),
+                                ),
+                                const PopupMenuItem(
+                                  value: 'history',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.history, color: Colors.green),
+                                      SizedBox(width: 8),
+                                      Text('Lịch sử đặt sân'),
                                     ],
                                   ),
                                 ),
@@ -1219,36 +1551,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Tài khoản ngân hàng nhận tiền:',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue),
-                    ),
-                    const SizedBox(height: 6),
-                    bankAccountNo.isEmpty
-                        ? const Padding(
-                            padding: EdgeInsets.only(bottom: 12),
-                            child: Text(
-                              '⚠️ Chủ sân chưa cấu hình tài khoản nhận tiền.',
-                              style: TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.w500),
-                            ),
-                          )
-                        : Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.blue.withOpacity(0.2)),
-                            ),
-                            child: Column(
-                              children: [
-                                _buildBankDetailRow("Ngân hàng:", bankName),
-                                _buildBankDetailRow("Số tài khoản:", bankAccountNo),
-                                _buildBankDetailRow("Chủ tài khoản:", bankAccountName),
-                              ],
-                            ),
-                          ),
-                    const Divider(height: 16),
-                    const Text(
                       'Lịch sử sao kê & chuyển tiền:',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                     ),
@@ -1499,6 +1801,801 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  void _showBookingHistoryDialog({required String title, required List<dynamic> bookings}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.8,
+          maxChildSize: 0.95,
+          minChildSize: 0.5,
+          expand: false,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                const SizedBox(height: 8),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: bookings.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'Chưa có lịch sử đặt sân nào.',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        )
+                      : ListView.builder(
+                          controller: scrollController,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: bookings.length,
+                          itemBuilder: (context, index) {
+                            final b = bookings[index];
+                            final id = b['id'];
+                            final status = b['status'] ?? 'PENDING_PAYMENT';
+                            final totalPrice = (b['totalPrice'] as num?)?.toDouble() ?? 0.0;
+                            final fieldName = b['field']?['name'] ?? 'Không rõ';
+                            final custName = b['customer']?['name'] ?? b['customerName'] ?? 'Không rõ';
+                            final custPhone = b['customer']?['phone'] ?? 'N/A';
+                            
+                            DateTime? fromTime;
+                            DateTime? toTime;
+                            DateTime? createdAt;
+                            try {
+                              if (b['fromTime'] != null) fromTime = DateTime.parse(b['fromTime']);
+                              if (b['toTime'] != null) toTime = DateTime.parse(b['toTime']);
+                              if (b['createdAt'] != null) createdAt = DateTime.parse(b['createdAt']);
+                            } catch (e) {
+                              // ignore
+                            }
+
+                            Color statusColor = Colors.grey;
+                            String statusLabel = 'Không rõ';
+                            if (status == 'APPROVED') {
+                              statusColor = Colors.green;
+                              statusLabel = 'Đã duyệt';
+                            } else if (status == 'PENDING_PAYMENT') {
+                              statusColor = Colors.orange;
+                              statusLabel = 'Chờ cọc';
+                            } else if (status == 'CANCELLED') {
+                              statusColor = Colors.red;
+                              statusLabel = 'Đã hủy';
+                            } else if (status == 'EXPIRED') {
+                              statusColor = Colors.grey;
+                              statusLabel = 'Hết hạn';
+                            }
+
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              elevation: 1,
+                              child: Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text('Mã đơn: #$id', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: statusColor.withOpacity(0.12),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            statusLabel,
+                                            style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 11),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const Divider(height: 12),
+                                    Text('🏟️ Sân: $fieldName', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                                    const SizedBox(height: 4),
+                                    Text('👤 Khách: $custName ($custPhone)', style: const TextStyle(fontSize: 13)),
+                                    const SizedBox(height: 4),
+                                    if (fromTime != null && toTime != null)
+                                      Text('🕐 Giờ đá: ${fromTime.hour}:00 - ${toTime.hour}:00 ngày ${fromTime.day}/${fromTime.month}/${fromTime.year}', style: const TextStyle(fontSize: 12)),
+                                    if (createdAt != null)
+                                      Text('📅 Ngày đặt: ${createdAt.day}/${createdAt.month}/${createdAt.year} ${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text('Tổng cọc: ${_formatMoney(totalPrice)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                                        if (status == 'APPROVED' || status == 'PENDING_PAYMENT')
+                                          TextButton.icon(
+                                            onPressed: () async {
+                                              final proceed = await showDialog<bool>(
+                                                context: context,
+                                                builder: (ctx) => AlertDialog(
+                                                  title: const Text('Hủy đặt sân'),
+                                                  content: Text('Bạn có chắc chắn muốn hủy lịch đặt sân #$id không?'),
+                                                  actions: [
+                                                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(ctx, true),
+                                                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                                      child: const Text('Xác nhận'),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                              if (proceed == true) {
+                                                Navigator.pop(context); // close bottom sheet
+                                                await _adminCancelBooking(id);
+                                              }
+                                            },
+                                            icon: const Icon(Icons.cancel, size: 14, color: Colors.red),
+                                            label: const Text('Hủy', style: TextStyle(fontSize: 11, color: Colors.red)),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildOverviewTab() {
+    if (isDashboardStatsLoading) {
+      return const Center(child: CircularProgressIndicator(color: Colors.green));
+    }
+
+    final activeFields = dashboardStats['activeFields'] ?? 0;
+    final totalUsers = dashboardStats['totalUsers'] ?? 0;
+    final totalOwners = dashboardStats['totalOwners'] ?? 0;
+    final double totalUnsettled = (dashboardStats['totalUnsettledAmount'] as num?)?.toDouble() ?? 0.0;
+    final pendingBookings = dashboardStats['pendingBookings'] ?? 0;
+    final todayBookings = dashboardStats['todayBookings'] ?? 0;
+    final double revenueMonth = (dashboardStats['revenueThisMonth'] as num?)?.toDouble() ?? 0.0;
+    final List<dynamic> chartDays = dashboardStats['bookingsByDay'] ?? [];
+    final List<dynamic> alerts = dashboardStats['alerts'] ?? [];
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Hệ thống tổng quan',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.green.shade900),
+          ),
+          const SizedBox(height: 12),
+          // KPI cards grid
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 2.3,
+            children: [
+              _buildKPICard('Sân hoạt động 🏟️', '$activeFields', Colors.blue),
+              _buildKPICard('Khách hàng 👥', '$totalUsers', Colors.purple),
+              _buildKPICard('Chủ sân 🏢', '$totalOwners', Colors.teal),
+              _buildKPICard('Đơn hôm nay 📅', '$todayBookings', Colors.orange),
+              _buildKPICard('Chờ cọc ⏳', '$pendingBookings', Colors.red),
+              _buildKPICard('Doanh thu tháng 💰', _formatMoney(revenueMonth), Colors.green),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Holds card
+          Card(
+            color: Colors.amber.shade50,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: Colors.amber.shade200),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+              child: Row(
+                children: [
+                  const Icon(Icons.account_balance_wallet, color: Colors.amber, size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Tổng tiền cọc giữ hộ:',
+                          style: TextStyle(fontSize: 12, color: Colors.black54),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _formatMoney(totalUnsettled),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.amber.shade900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Bar Chart
+          if (chartDays.isNotEmpty) ...[
+            _buildRevenueChart(chartDays),
+            const SizedBox(height: 24),
+          ],
+          // Alerts
+          if (alerts.isNotEmpty) ...[
+            const Text(
+              '⚠️ Cảnh báo hệ thống',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.orange),
+            ),
+            const SizedBox(height: 8),
+            ...alerts.map((alert) {
+              return Card(
+                color: Colors.orange.shade50,
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: const Icon(Icons.warning, color: Colors.orange),
+                  title: Text(
+                    'Chủ sân "${alert['ownerName']}" chưa cấu hình tài khoản ngân hàng nhận tiền.',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              );
+            }).toList(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKPICard(String title, String value, Color color) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(left: BorderSide(color: color, width: 5)),
+          borderRadius: const BorderRadius.only(
+            topRight: Radius.circular(12),
+            bottomRight: Radius.circular(12),
+          ),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRevenueChart(List<dynamic> days) {
+    double maxRevenue = 1000.0;
+    for (var day in days) {
+      double rev = (day['revenue'] as num?)?.toDouble() ?? 0.0;
+      if (rev > maxRevenue) maxRevenue = rev;
+    }
+
+    return Container(
+      height: 180,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green.withOpacity(0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Biểu đồ doanh thu cọc 7 ngày qua',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.green),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: days.map<Widget>((day) {
+                double rev = (day['revenue'] as num?)?.toDouble() ?? 0.0;
+                double pct = rev / maxRevenue;
+                final dateStr = day['date']?.toString() ?? '';
+                final parts = dateStr.split('-');
+                final label = parts.length > 2 ? '${parts[2]}/${parts[1]}' : dateStr;
+
+                return Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        rev > 0 ? '${(rev / 1000).round()}k' : '0',
+                        style: const TextStyle(fontSize: 9, color: Colors.black54),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        height: (80 * pct).clamp(4.0, 80.0),
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(label, style: const TextStyle(fontSize: 9, color: Colors.black54)),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAllBookingsTab() {
+    final List<dynamic> filtered = bookingsList.where((b) {
+      final status = b['status'] ?? 'PENDING_PAYMENT';
+      if (selectedBookingStatus != 'ALL' && status != selectedBookingStatus) {
+        return false;
+      }
+      if (searchQuery.isNotEmpty) {
+        final custName = b['customerName']?.toString().toLowerCase() ?? '';
+        final custPhone = b['customerPhone']?.toString() ?? '';
+        final fieldName = b['field']?['name']?.toString().toLowerCase() ?? '';
+        final q = searchQuery.toLowerCase();
+        return custName.contains(q) || custPhone.contains(q) || fieldName.contains(q);
+      }
+      return true;
+    }).toList();
+
+    return Column(
+      children: [
+        // Horizontal status selectors
+        Container(
+          height: 48,
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              _buildStatusFilterChip('Tất cả', 'ALL'),
+              _buildStatusFilterChip('Đã duyệt ✅', 'APPROVED'),
+              _buildStatusFilterChip('Chờ cọc ⏳', 'PENDING_PAYMENT'),
+              _buildStatusFilterChip('Đã hủy ❌', 'CANCELLED'),
+              _buildStatusFilterChip('Hết hạn ⏰', 'EXPIRED'),
+            ],
+          ),
+        ),
+        Expanded(
+          child: isBookingsLoading
+              ? const Center(child: CircularProgressIndicator())
+              : filtered.isEmpty
+                  ? const Center(child: Text('Không tìm thấy lịch đặt nào.'))
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) {
+                        final b = filtered[index];
+                        final id = b['id'];
+                        final fieldName = b['field']?['name'] ?? 'Sân không rõ';
+                        final custName = b['customerName'] ?? 'Khách không rõ';
+                        final custPhone = b['customerPhone'] ?? '';
+                        final fromTime = b['fromTime'] != null ? DateTime.parse(b['fromTime']) : null;
+                        final toTime = b['toTime'] != null ? DateTime.parse(b['toTime']) : null;
+                        final createdAt = b['createdAt'] != null ? DateTime.parse(b['createdAt']) : null;
+                        final status = b['status'] ?? 'PENDING_PAYMENT';
+                        final double totalPrice = (b['totalPrice'] as num?)?.toDouble() ?? 0.0;
+
+                        Color statusColor;
+                        String statusLabel;
+                        switch (status) {
+                          case 'APPROVED':
+                            statusColor = Colors.green;
+                            statusLabel = 'Đã duyệt';
+                            break;
+                          case 'CANCELLED':
+                            statusColor = Colors.red;
+                            statusLabel = 'Đã hủy';
+                            break;
+                          case 'EXPIRED':
+                            statusColor = Colors.grey;
+                            statusLabel = 'Hết hạn';
+                            break;
+                          default:
+                            statusColor = Colors.orange;
+                            statusLabel = 'Chờ cọc';
+                        }
+
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text('Mã đơn: #$id', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        statusLabel,
+                                        style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 11),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const Divider(height: 12),
+                                Text('🏟️ Sân: $fieldName', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                                const SizedBox(height: 4),
+                                Text('👤 Khách: $custName ($custPhone)', style: const TextStyle(fontSize: 13)),
+                                const SizedBox(height: 4),
+                                if (fromTime != null && toTime != null)
+                                  Text('🕐 Giờ đá: ${fromTime.hour}:00 - ${toTime.hour}:00 ngày ${fromTime.day}/${fromTime.month}/${fromTime.year}', style: const TextStyle(fontSize: 12)),
+                                if (createdAt != null)
+                                  Text('📅 Ngày đặt: ${createdAt.day}/${createdAt.month}/${createdAt.year} ${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text('Tổng cọc: ${_formatMoney(totalPrice)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                                    Row(
+                                      children: [
+                                        if (status == 'APPROVED' || status == 'PENDING_PAYMENT') ...[
+                                          TextButton.icon(
+                                            onPressed: () => _adminCancelBooking(id),
+                                            icon: const Icon(Icons.cancel, size: 14, color: Colors.red),
+                                            label: const Text('Hủy', style: TextStyle(fontSize: 11, color: Colors.red)),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusFilterChip(String label, String status) {
+    final isSelected = selectedBookingStatus == status;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: isSelected,
+        onSelected: (val) {
+          if (val) {
+            setState(() => selectedBookingStatus = status);
+          }
+        },
+        selectedColor: Colors.green.shade100,
+        labelStyle: TextStyle(
+          color: isSelected ? Colors.green.shade800 : Colors.black87,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+    );
+  }
+
+
+
+  Future<void> _adminCancelBooking(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hủy đặt sân'),
+        content: Text('Bạn có chắc chắn muốn hủy lịch đặt sân #$id? Khách hàng sẽ nhận được thông báo.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Hủy')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Xác nhận'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => isBookingsLoading = true);
+      try {
+        final success = await ApiService.adminCancelBooking(id);
+        if (success) {
+          _showSuccessSnackBar('Đã hủy đặt sân #$id!');
+          await _loadBookingsList();
+          await _loadDashboardStats();
+        } else {
+          _showErrorSnackBar('Hủy đặt sân thất bại!');
+        }
+      } catch (e) {
+        _showErrorSnackBar('Lỗi: $e');
+      } finally {
+        setState(() => isBookingsLoading = false);
+      }
+    }
+  }
+
+  Widget _buildSystemTab() {
+    return Column(
+      children: [
+        Container(
+          color: Colors.grey.shade100,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildSystemSubTabButton('⚙️ Cấu hình', 0),
+              _buildSystemSubTabButton('🔔 Gửi TB', 1),
+              _buildSystemSubTabButton('📋 Nhật ký', 2),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _systemSubTab == 0
+              ? _buildSystemConfigsView()
+              : _systemSubTab == 1
+                  ? _buildPushNotificationView()
+                  : _buildAuditLogView(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSystemSubTabButton(String label, int tabIndex) {
+    final isSelected = _systemSubTab == tabIndex;
+    return TextButton(
+      onPressed: () => setState(() => _systemSubTab = tabIndex),
+      style: TextButton.styleFrom(
+        foregroundColor: isSelected ? Colors.green : Colors.black54,
+      ),
+      child: Column(
+        children: [
+          Text(label, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+          if (isSelected)
+            Container(height: 2, width: 40, color: Colors.green, margin: const EdgeInsets.only(top: 4)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSystemConfigsView() {
+    return isConfigsLoading
+        ? const Center(child: CircularProgressIndicator())
+        : configs.isEmpty
+            ? const Center(child: Text('Không tải được cấu hình hệ thống.'))
+            : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: configs.length,
+                itemBuilder: (context, index) {
+                  final cfg = configs[index];
+                  final key = cfg['configKey'];
+                  final val = cfg['configValue'];
+                  final desc = cfg['description'] ?? '';
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: ListTile(
+                      title: Text(desc.isNotEmpty ? desc : key, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text('Giá trị: $val'),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blue),
+                        onPressed: () => _editConfig(key, val, desc),
+                      ),
+                    ),
+                  );
+                },
+              );
+  }
+
+  Future<void> _editConfig(String key, String currentVal, String desc) async {
+    final controller = TextEditingController(text: currentVal);
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Sửa cấu hình: $desc'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'Giá trị mới'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.green),
+            child: const Text('Cập nhật'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => isConfigsLoading = true);
+      try {
+        final success = await ApiService.updateSystemConfig(key, controller.text.trim());
+        if (success) {
+          _showSuccessSnackBar('Cập nhật cấu hình thành công!');
+          await _loadConfigs();
+        } else {
+          _showErrorSnackBar('Cập nhật cấu hình thất bại!');
+        }
+      } catch (e) {
+        _showErrorSnackBar('Lỗi: $e');
+      } finally {
+        setState(() => isConfigsLoading = false);
+      }
+    }
+  }
+
+  Widget _buildPushNotificationView() {
+    final titleController = TextEditingController();
+    final bodyController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Form(
+        key: formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Gửi thông báo đẩy hệ thống', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: titleController,
+              decoration: const InputDecoration(labelText: 'Tiêu đề thông báo *', border: OutlineInputBorder()),
+              validator: (v) => v == null || v.trim().isEmpty ? 'Nhập tiêu đề' : null,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: bodyController,
+              decoration: const InputDecoration(labelText: 'Nội dung thông báo *', border: OutlineInputBorder()),
+              maxLines: 4,
+              validator: (v) => v == null || v.trim().isEmpty ? 'Nhập nội dung' : null,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  if (formKey.currentState!.validate()) {
+                    setState(() => isLoading = true);
+                    try {
+                      final success = await ApiService.adminBroadcastNotification(
+                        titleController.text.trim(),
+                        bodyController.text.trim(),
+                      );
+                      if (success) {
+                        _showSuccessSnackBar('Đã gửi thông báo đẩy tới toàn bộ thiết bị khách hàng & chủ sân!');
+                        titleController.clear();
+                        bodyController.clear();
+                      } else {
+                        _showErrorSnackBar('Gửi thông báo thất bại!');
+                      }
+                    } catch (e) {
+                      _showErrorSnackBar('Lỗi: $e');
+                    } finally {
+                      setState(() => isLoading = false);
+                    }
+                  }
+                },
+                icon: const Icon(Icons.send, color: Colors.white),
+                label: const Text('Gửi thông báo ngay', style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAuditLogView() {
+    return isAuditLogsLoading
+        ? const Center(child: CircularProgressIndicator())
+        : auditLogs.isEmpty
+            ? const Center(child: Text('Chưa có hoạt động quản trị nào.'))
+            : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: auditLogs.length,
+                itemBuilder: (context, index) {
+                  final log = auditLogs[index];
+                  final email = log['adminEmail'] ?? 'Hệ thống';
+                  final action = log['action'] ?? '';
+                  final desc = log['description'] ?? '';
+                  final timeStr = log['createdAt'] != null
+                      ? DateTime.parse(log['createdAt']).toLocal().toString().substring(0, 19)
+                      : '';
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(action, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+                              Text(timeStr, style: const TextStyle(fontSize: 11, color: Colors.black54)),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text('Admin: $email', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12)),
+                          const SizedBox(height: 4),
+                          Text(desc, style: const TextStyle(fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+  }
+
   String _formatMoney(double amount) {
     return amount.round().toString().replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
@@ -1508,9 +2605,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    String appBarTitle;
+    switch (_currentIndex) {
+      case 0:
+        appBarTitle = 'Tổng quan hệ thống';
+        break;
+      case 1:
+        appBarTitle = 'Quản lý sân bóng';
+        break;
+      case 2:
+        appBarTitle = _userSubTab == 0 ? 'Quản lý người dùng' : 'Quản lý thực thể chủ sân';
+        break;
+      case 3:
+        appBarTitle = 'Lịch đặt sân toàn cục';
+        break;
+      case 4:
+        appBarTitle = 'Ví cọc & Đối soát';
+        break;
+      case 5:
+        appBarTitle = 'Cấu hình & Hệ thống';
+        break;
+      default:
+        appBarTitle = 'Quản trị hệ thống';
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(_currentIndex == 0 ? 'Quản lý sân bóng' : _currentIndex == 1 ? 'Quản lý người dùng' : 'Ví trung gian & Tổng cọc'),
+        title: Text(appBarTitle),
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
         actions: [
@@ -1520,6 +2641,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               _loadStadiums();
               _loadUsers();
               _loadRevenue();
+              _loadOwnersRevenue();
+              _loadDashboardStats();
+              _loadConfigs();
+              _loadAuditLogs();
+              _loadOwnersList();
+              _loadBookingsList();
             },
           ),
           IconButton(
@@ -1534,38 +2661,41 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       body: Column(
         children: [
           // Search bar
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: _currentIndex == 0 
-                    ? 'Tìm kiếm sân bóng...' 
-                    : _currentIndex == 1 
-                        ? 'Tìm kiếm người dùng...' 
-                        : 'Tìm kiếm giao dịch cọc...',
-                prefixIcon: Icon(_currentIndex == 0 
-                    ? Icons.sports_soccer 
-                    : _currentIndex == 1 
-                        ? Icons.people 
-                        : Icons.account_balance_wallet),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+          if (_currentIndex == 1 || _currentIndex == 3)
+            Padding(
+              padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 12.0, bottom: 4.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: _currentIndex == 1
+                      ? 'Tìm kiếm sân bóng...'
+                      : 'Tìm kiếm người dùng...',
+                  prefixIcon: Icon(_currentIndex == 1
+                      ? Icons.sports_soccer
+                      : Icons.people),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
                 ),
-                filled: true,
-                fillColor: Colors.grey.shade50,
+                onChanged: (value) {
+                  setState(() => searchQuery = value);
+                },
               ),
-              onChanged: (value) {
-                setState(() => searchQuery = value);
-              },
             ),
-          ),
           // Content based on selected tab
           Expanded(
-            child: _currentIndex == 0 
-                ? _buildStadiumsTab() 
-                : _currentIndex == 1 
-                    ? _buildUsersTab() 
-                    : _buildRevenueTab(),
+            child: IndexedStack(
+              index: _currentIndex,
+              children: [
+                _buildOverviewTab(),
+                _buildStadiumsTab(),
+                _buildAllBookingsTab(),
+                _buildUsersTab(),
+                _buildRevenueTab(),
+                _buildSystemTab(),
+              ],
+            ),
           ),
         ],
       ),
@@ -1579,44 +2709,67 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         },
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.grey,
-        selectedFontSize: 14,
-        unselectedFontSize: 12,
-        iconSize: 28,
+        unselectedItemColor: Colors.grey.shade600,
+        selectedFontSize: 11,
+        unselectedFontSize: 10,
+        iconSize: 22,
         elevation: 8,
         backgroundColor: Colors.white,
         items: const [
           BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard),
+            activeIcon: Icon(Icons.dashboard, color: Colors.green),
+            label: 'Tổng quan',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.sports_soccer),
-            activeIcon: Icon(Icons.sports_soccer, size: 32),
-            label: 'Quản lý sân',
-            tooltip: 'Quản lý sân bóng',
+            activeIcon: Icon(Icons.sports_soccer, color: Colors.green),
+            label: 'Sân bóng',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.list_alt),
+            activeIcon: Icon(Icons.list_alt, color: Colors.green),
+            label: 'Đặt sân',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.people),
-            activeIcon: Icon(Icons.people, size: 32),
+            activeIcon: Icon(Icons.people, color: Colors.green),
             label: 'Người dùng',
-            tooltip: 'Quản lý người dùng',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.account_balance_wallet),
-            activeIcon: Icon(Icons.account_balance_wallet, size: 32),
-            label: 'Ví trung gian',
-            tooltip: 'Quản lý tiền cọc giữ hộ',
+            activeIcon: Icon(Icons.account_balance_wallet, color: Colors.green),
+            label: 'Ví cọc',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            activeIcon: Icon(Icons.settings, color: Colors.green),
+            label: 'Hệ thống',
           ),
         ],
       ),
-      floatingActionButton: _currentIndex == 0 ? FloatingActionButton.extended(
-        onPressed: () => _navigateToForm(),
-        backgroundColor: Colors.green,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Thêm sân', style: TextStyle(color: Colors.white)),
-      ) : _currentIndex == 1 ? FloatingActionButton.extended(
-        onPressed: () => _showAddUserDialog(),
-        backgroundColor: Colors.green,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Thêm người dùng', style: TextStyle(color: Colors.white)),
-      ) : null,
+      floatingActionButton: _currentIndex == 1
+          ? FloatingActionButton.extended(
+              onPressed: () => _navigateToForm(),
+              backgroundColor: Colors.green,
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text('Thêm sân', style: TextStyle(color: Colors.white)),
+            )
+          : _currentIndex == 3 && _userSubTab == 0
+              ? FloatingActionButton.extended(
+                  onPressed: () => _showAddUserDialog(),
+                  backgroundColor: Colors.green,
+                  icon: const Icon(Icons.add, color: Colors.white),
+                  label: const Text('Thêm người dùng', style: TextStyle(color: Colors.white)),
+                )
+              : _currentIndex == 3 && _userSubTab == 1
+                  ? FloatingActionButton.extended(
+                      onPressed: () => _showAddEditOwnerDialog(),
+                      backgroundColor: Colors.green,
+                      icon: const Icon(Icons.add, color: Colors.white),
+                      label: const Text('Thêm chủ sân', style: TextStyle(color: Colors.white)),
+                    )
+                  : null,
     );
   }
 }

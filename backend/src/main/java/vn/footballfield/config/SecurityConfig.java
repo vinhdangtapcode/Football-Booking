@@ -25,6 +25,14 @@ public class SecurityConfig {
 	@Autowired
 	private JwtAuthenticationFilter jwtAuthenticationFilter;
 
+	@Autowired
+	private vn.footballfield.repository.SystemConfigRepository systemConfigRepository;
+
+	@Bean
+	public MaintenanceModeFilter maintenanceModeFilter() {
+		return new MaintenanceModeFilter(systemConfigRepository);
+	}
+
 	@Bean
 	public PasswordEncoder passwordEncoder() {
 		return new BCryptPasswordEncoder();
@@ -73,6 +81,7 @@ public class SecurityConfig {
 
 						// ADMIN only - quản lý hệ thống
 						.requestMatchers("/api/stadiums/**").hasRole("ADMIN")
+						.requestMatchers("/api/admin/**").hasRole("ADMIN")
 						.requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
 						.requestMatchers(HttpMethod.GET, "/api/users/{id:\\d+}").hasRole("ADMIN")
 						.requestMatchers(HttpMethod.PUT, "/api/users/{id:\\d+}").hasRole("ADMIN")
@@ -95,7 +104,8 @@ public class SecurityConfig {
 
 						// Mặc định yêu cầu đăng nhập
 						.anyRequest().authenticated())
-				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+				.addFilterAfter(maintenanceModeFilter(), JwtAuthenticationFilter.class);
 
 		return http.build();
 	}
