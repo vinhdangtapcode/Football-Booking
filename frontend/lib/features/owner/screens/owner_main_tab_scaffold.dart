@@ -5,6 +5,7 @@ import '../../../services/api_service.dart';
 import '../../../services/theme_service.dart';
 import 'package:provider/provider.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../notification/providers/notification_provider.dart';
 import '../../../main.dart'; // Import để sử dụng routeObserver
 import 'owner_fields_screen.dart';
 import '../../notification/screens/owner_notifications_screen.dart';
@@ -176,9 +177,12 @@ class _OwnerMainTabScaffoldState extends State<OwnerMainTabScaffold> with Widget
       return;
     }
     setState(() => _currentIndex = index);
-    // Khi click vào tab thông báo, đánh dấu tất cả là đã xem
+    // Khi click vào tab thông báo, đánh dấu tất cả là đã xem và tải lại thông báo mới nhất từ provider
     if (index == 2) {
       await _markAllAsSeen();
+      if (mounted) {
+        context.read<NotificationProvider>().loadNotifications();
+      }
     } else if (index == 1) {
       // Refresh message count khi vào tab tin nhắn
       await _fetchUnreadMessageCount();

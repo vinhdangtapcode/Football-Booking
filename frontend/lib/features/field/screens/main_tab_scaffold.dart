@@ -10,6 +10,7 @@ import '../../../services/api_service.dart';
 import '../../../services/theme_service.dart';
 import 'package:provider/provider.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../notification/providers/notification_provider.dart';
 import '../../../main.dart'; // Import để sử dụng routeObserver
 
 class MainTabScaffold extends StatefulWidget {
@@ -183,8 +184,11 @@ class _MainTabScaffoldState extends State<MainTabScaffold> with WidgetsBindingOb
       // Tab tin nhắn - refresh message count
       await _fetchUnreadMessageCount();
     } else if (index == 3) {
-      // Tab thông báo - đánh dấu đã xem
+      // Tab thông báo - đánh dấu đã xem và tải lại thông báo mới nhất từ provider
       await _markAllAsSeen();
+      if (mounted) {
+        context.read<NotificationProvider>().loadNotifications();
+      }
     } else {
       // Refresh counts khi chuyển tab khác
       await _fetchNewNotificationCount();
