@@ -4,7 +4,7 @@ class AppConstants {
   // - Máy ảo iOS (iOS Simulator) hoặc Web: "http://localhost:8080"
   // - Thiết bị thật chạy chung mạng Wi-Fi: "http://<IP_MÁY_TÍNH>:8080" (Ví dụ: "http://192.168.1.5:8080")
   // - Môi trường Production (Cloud Server): "http://178.128.62.29:8080" hoặc tên miền của bạn
-  static const String baseUrl = "http://10.0.2.2:8080";
+  static const String baseUrl = "http://178.128.62.29:8080";
   
   // Storage Keys
   static const String tokenKey = 'jwt_token';

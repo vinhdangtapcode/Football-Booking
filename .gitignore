@@ -37,3 +37,7 @@ backups/
 *.sql
 *.sql.gz
 
+# Personal deployment guide
+my_deploy/
+
+
