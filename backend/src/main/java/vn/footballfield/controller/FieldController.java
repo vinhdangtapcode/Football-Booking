@@ -57,6 +57,9 @@ public class FieldController {
 	@Autowired
 	private vn.footballfield.service.BookingService bookingService;
 
+	@Autowired
+	private vn.footballfield.service.SettlementService settlementService;
+
 	@GetMapping("/admin/revenue")
 	public ResponseEntity<?> getAdminRevenue() {
 		List<vn.footballfield.entity.Book> allBookings = bookingService.getAllBookings();
@@ -88,7 +91,7 @@ public class FieldController {
 					.mapToDouble(b -> b.getTotalPrice() != null ? b.getTotalPrice() : 0.0)
 					.sum();
 					
-			List<vn.footballfield.entity.Settlement> settlements = bookingService.getSettlementsByOwner(owner.getId());
+			List<vn.footballfield.entity.Settlement> settlements = settlementService.getSettlementsByOwner(owner.getId());
 			
 			java.util.Map<String, Object> map = new java.util.HashMap<>();
 			map.put("ownerId", owner.getId());
@@ -110,7 +113,7 @@ public class FieldController {
 	@PostMapping("/admin/settle/{ownerId}")
 	public ResponseEntity<?> settleOwner(@PathVariable Integer ownerId) {
 		try {
-			vn.footballfield.entity.Settlement settlement = bookingService.settleOwnerBookings(ownerId);
+			vn.footballfield.entity.Settlement settlement = settlementService.settleOwnerBookings(ownerId);
 			return ResponseEntity.ok(settlement);
 		} catch (Exception e) {
 			return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));

@@ -3,8 +3,8 @@ package vn.footballfield.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import vn.footballfield.dto.ConversationDTO;
-import vn.footballfield.dto.MessageDTO;
+import vn.footballfield.dto.chat.ConversationDTO;
+import vn.footballfield.dto.chat.MessageDTO;
 import vn.footballfield.entity.Conversation;
 import vn.footballfield.service.ChatService;
 

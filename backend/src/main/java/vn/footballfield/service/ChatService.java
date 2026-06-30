@@ -3,8 +3,8 @@ package vn.footballfield.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vn.footballfield.dto.ConversationDTO;
-import vn.footballfield.dto.MessageDTO;
+import vn.footballfield.dto.chat.ConversationDTO;
+import vn.footballfield.dto.chat.MessageDTO;
 import vn.footballfield.entity.*;
 import vn.footballfield.repository.*;
 

@@ -89,6 +89,9 @@ public class OwnerController {
 	@Autowired
 	private vn.footballfield.service.BookingService bookingService;
 
+	@Autowired
+	private vn.footballfield.service.SettlementService settlementService;
+
 	@GetMapping("/revenue")
 	public ResponseEntity<?> getOwnerRevenue() {
 		String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -102,7 +105,7 @@ public class OwnerController {
 						&& !Boolean.TRUE.equals(b.getSettled()))
 				.mapToDouble(b -> b.getTotalPrice() != null ? b.getTotalPrice() : 0.0)
 				.sum();
-		List<vn.footballfield.entity.Settlement> settlements = bookingService.getSettlementsByOwner(owner.getId());
+		List<vn.footballfield.entity.Settlement> settlements = settlementService.getSettlementsByOwner(owner.getId());
 		
 		java.util.Map<String, Object> response = new java.util.HashMap<>();
 		response.put("totalPlatformHeld", totalPlatformHeld);

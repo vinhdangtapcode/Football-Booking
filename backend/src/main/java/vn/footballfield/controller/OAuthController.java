@@ -5,9 +5,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import vn.footballfield.config.JwtUtil;
-import vn.footballfield.dto.GoogleAuthRequest;
-import vn.footballfield.dto.LoginResponse;
+import vn.footballfield.infrastructure.security.JwtUtil;
+import vn.footballfield.dto.auth.GoogleAuthRequest;
+import vn.footballfield.dto.auth.LoginResponse;
 import vn.footballfield.entity.User;
 import vn.footballfield.service.GoogleAuthService;
 
