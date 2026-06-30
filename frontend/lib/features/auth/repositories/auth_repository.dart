@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_client.dart';
 import '../../../models/user.dart';
@@ -40,6 +42,13 @@ class AuthRepository {
   }
 
   static Future<void> logout() async {
+    try {
+      await FirebaseMessaging.instance.deleteToken();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('fcm_token');
+    } catch (e) {
+      print("Error deleting FCM token on logout: $e");
+    }
     await ApiClient.clearToken();
   }
 

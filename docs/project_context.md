@@ -39,6 +39,9 @@ Dự án là một hệ thống đặt sân bóng đá toàn diện (Monorepo), 
 8.  **Cấu hình deploy riêng tư**:
     *   Đã tạo thư mục `my_deploy/` chứa tệp hướng dẫn [my_deploy.md](file:///c:/Users/Admin/IdeaProjects/football_booking/my_deploy/my_deploy.md), script deploy 1-click [deploy.ps1](file:///c:/Users/Admin/IdeaProjects/football_booking/my_deploy/deploy.ps1), và script đồng bộ DB [sync_db.ps1](file:///c:/Users/Admin/IdeaProjects/football_booking/my_deploy/sync_db.ps1) để cập nhật ứng dụng và đồng bộ hóa cơ sở dữ liệu lên server DigitalOcean (`178.128.62.29`).
     *   Đã thêm thư mục `my_deploy/` vào [.gitignore](file:///c:/Users/Admin/IdeaProjects/football_booking/.gitignore) để bảo mật thông tin máy chủ cá nhân.
+9.  **Bảo mật thông tin thông báo đẩy (FCM)**:
+    *   Đã cập nhật phương thức đăng xuất tại [auth_repository.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/auth/repositories/auth_repository.dart) để tự động gọi `FirebaseMessaging.instance.deleteToken()` và xóa cache `fcm_token` trong `SharedPreferences`.
+    *   Điều này giúp hủy đăng ký mã nhận thông báo của thiết bị với người dùng cũ, đảm bảo thiết bị sẽ không nhận bất kỳ thông báo nào từ tài khoản cũ sau khi đã đăng xuất.
 
 ---
 
