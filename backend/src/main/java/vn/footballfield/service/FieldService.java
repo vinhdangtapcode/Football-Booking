@@ -48,6 +48,9 @@ public class FieldService {
 	}
 
 	public Field createField(@Valid Field field) {
+		if (field.getPricePerHourPeak() == null && field.getPricePerHour() != null) {
+			field.setPricePerHourPeak(field.getPricePerHour().multiply(new java.math.BigDecimal("1.3")));
+		}
 		return fieldRepository.save(field);
 	}
 
@@ -63,6 +66,11 @@ public class FieldService {
 			updated.setGrassType(field.getGrassType());
 			updated.setFacilities(field.getFacilities());
 			updated.setPricePerHour(field.getPricePerHour());
+			if (field.getPricePerHourPeak() != null) {
+				updated.setPricePerHourPeak(field.getPricePerHourPeak());
+			} else if (field.getPricePerHour() != null) {
+				updated.setPricePerHourPeak(field.getPricePerHour().multiply(new java.math.BigDecimal("1.3")));
+			}
 			updated.setOpeningTime(field.getOpeningTime());
 			updated.setClosingTime(field.getClosingTime());
 			// Không cập nhật owner: giữ nguyên chủ sở hữu của sân

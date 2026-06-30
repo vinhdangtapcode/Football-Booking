@@ -71,6 +71,7 @@ public class OwnerController {
 			existingField.setGrassType(field.getGrassType());
 			existingField.setFacilities(field.getFacilities());
 			existingField.setPricePerHour(field.getPricePerHour());
+			existingField.setPricePerHourPeak(field.getPricePerHourPeak());
 			existingField.setDepositAmount(field.getDepositAmount());
 			existingField.setOpeningTime(field.getOpeningTime());
 			existingField.setClosingTime(field.getClosingTime());

@@ -39,6 +39,7 @@ class Field {
   String? type;
   String? facilities;
   double pricePerHour;
+  double? pricePerHourPeak;
   double depositAmount;
   double? _rating;
   String? openingTime;
@@ -62,6 +63,7 @@ class Field {
     this.type,
     this.facilities,
     required this.pricePerHour,
+    this.pricePerHourPeak,
     this.depositAmount = 0.0,
     double? rating,
     this.openingTime,
@@ -87,6 +89,7 @@ class Field {
       type: json['type'],
       facilities: json['facilities'],
       pricePerHour: (json['pricePerHour'] is num) ? json['pricePerHour'].toDouble() : 0,
+      pricePerHourPeak: (json['pricePerHourPeak'] is num) ? json['pricePerHourPeak'].toDouble() : null,
       depositAmount: (json['depositAmount'] is num) ? json['depositAmount'].toDouble() : 0.0,
       rating: (json['rating'] is num)
         ? json['rating'].toDouble()
@@ -120,6 +123,7 @@ class Field {
       'type': type,
       'facilities': facilities,
       'pricePerHour': pricePerHour,
+      'pricePerHourPeak': pricePerHourPeak,
       'depositAmount': depositAmount,
       'rating': _rating,
       'openingTime': openingTime,

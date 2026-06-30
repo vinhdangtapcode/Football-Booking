@@ -43,6 +43,9 @@ public class Field {
 	@Positive
 	private BigDecimal pricePerHour;
 
+	@Column(name = "price_per_hour_peak")
+	private BigDecimal pricePerHourPeak;
+
 	@Column(name = "deposit_amount", nullable = false)
 	private BigDecimal depositAmount = BigDecimal.ZERO;
 
@@ -97,6 +100,8 @@ public class Field {
 	public void setFacilities(String facilities) { this.facilities = facilities; }
 	public BigDecimal getPricePerHour() { return pricePerHour; }
 	public void setPricePerHour(BigDecimal pricePerHour) { this.pricePerHour = pricePerHour; }
+	public BigDecimal getPricePerHourPeak() { return pricePerHourPeak; }
+	public void setPricePerHourPeak(BigDecimal pricePerHourPeak) { this.pricePerHourPeak = pricePerHourPeak; }
 	public BigDecimal getDepositAmount() { return depositAmount; }
 	public void setDepositAmount(BigDecimal depositAmount) { this.depositAmount = depositAmount; }
 	public Time getOpeningTime() { return openingTime; }

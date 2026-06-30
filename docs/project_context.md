@@ -42,6 +42,12 @@ Dự án là một hệ thống đặt sân bóng đá toàn diện (Monorepo), 
 9.  **Bảo mật thông tin thông báo đẩy (FCM)**:
     *   Đã cập nhật phương thức đăng xuất tại [auth_repository.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/auth/repositories/auth_repository.dart) để tự động gọi `FirebaseMessaging.instance.deleteToken()` và xóa cache `fcm_token` trong `SharedPreferences`.
     *   Điều này giúp hủy đăng ký mã nhận thông báo của thiết bị với người dùng cũ, đảm bảo thiết bị sẽ không nhận bất kỳ thông báo nào từ tài khoản cũ sau khi đã đăng xuất.
+10. **Vô hiệu hóa các khung giờ đã qua khi đặt sân**:
+    *   Đã cập nhật màn hình đặt sân tại [booking_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/booking/screens/booking_screen.dart) để tự động kiểm tra thời gian hiện tại.
+    *   Các khung giờ đã qua trong ngày hiện tại (kể cả khung giờ đã được đặt trước đó hay chưa) sẽ được tự động làm mờ (grey out) và bị khóa (disable) không cho phép người dùng nhấn chọn đặt sân, tránh hiển thị màu đỏ của khung giờ đã đặt ở quá khứ.
+11. **Tính giá cao điểm tự động (Peak Hour Pricing)**:
+    *   Đã cập nhật cách tính tổng tiền ở [booking_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/booking/screens/booking_screen.dart) áp dụng nhân hệ số **`1.5` (gấp rưỡi)** cho các khung giờ vàng/giờ cao điểm (`17:00 - 20:00`).
+    *   Đã cập nhật cách tính tiền cọc ở backend tại [BookingService.java](file:///c:/Users/Admin/IdeaProjects/football_booking/backend/src/main/java/vn/footballfield/service/BookingService.java) để áp dụng chính xác hệ số nhân `1.5` cho các khoảng thời gian nằm trong khung giờ cao điểm này, đảm bảo số tiền thanh toán hiển thị trên app đồng bộ với hóa đơn thanh toán trên cổng PayOS.
 
 ---
 

@@ -23,6 +23,7 @@ class _AddEditFieldScreenState extends State<AddEditFieldScreen> {
   TextEditingController typeController = TextEditingController();
   TextEditingController facilitiesController = TextEditingController();
   TextEditingController priceController = TextEditingController();
+  TextEditingController peakPriceController = TextEditingController();
   TextEditingController depositController = TextEditingController();
   TextEditingController lengthController = TextEditingController();
   TextEditingController widthController = TextEditingController();
@@ -56,6 +57,7 @@ class _AddEditFieldScreenState extends State<AddEditFieldScreen> {
         typeController.text = field!.type ?? "";
         facilitiesController.text = field!.facilities ?? "";
         priceController.text = field!.pricePerHour.toString();
+        peakPriceController.text = field!.pricePerHourPeak?.toString() ?? "";
         depositController.text = field!.depositAmount.toString();
         lengthController.text = field!.length?.toString() ?? "70";
         widthController.text = field!.width?.toString() ?? "50";
@@ -326,6 +328,7 @@ class _AddEditFieldScreenState extends State<AddEditFieldScreen> {
         type: typeController.text,
         facilities: facilitiesController.text,
         pricePerHour: double.tryParse(priceController.text) ?? 0.0,
+        pricePerHourPeak: double.tryParse(peakPriceController.text),
         depositAmount: double.tryParse(depositController.text) ?? 0.0,
         length: double.tryParse(lengthController.text),
         width: double.tryParse(widthController.text),
@@ -648,6 +651,29 @@ class _AddEditFieldScreenState extends State<AddEditFieldScreen> {
                   ),
                   keyboardType: TextInputType.number,
                   validator: (value) => value!.isEmpty ? "Bắt buộc" : null,
+                ),
+                SizedBox(height: 18),
+                TextFormField(
+                  controller: peakPriceController,
+                  style: TextStyle(color: isModern ? Colors.white : Colors.black),
+                  decoration: InputDecoration(
+                    labelText: "Giá giờ cao điểm (VNĐ)",
+                    labelStyle: TextStyle(color: isModern ? Colors.white70 : null),
+                    helperText: "Mặc định bằng 1.3 lần giá thường nếu để trống",
+                    helperStyle: TextStyle(color: isModern ? Colors.white30 : Colors.grey[600], fontSize: 12),
+                    prefixIcon: Icon(Icons.flash_on, color: isModern ? Colors.white70 : Colors.amber),
+                    filled: true,
+                    fillColor: isModern ? Colors.white12 : Colors.amber[50],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: isModern ? BorderSide(color: Colors.white24) : const BorderSide(),
+                    ),
+                    enabledBorder: isModern ? OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: Colors.white12),
+                    ) : null,
+                  ),
+                  keyboardType: TextInputType.number,
                 ),
                 SizedBox(height: 18),
                 TextFormField(

@@ -108,18 +108,39 @@ public class BookingService {
 			}
 		}
 
-		// 3. TÍNH TOÁN TIỀN CỌC (Cấu hình sẵn trên sân nhân với số giờ thuê)
-		double durationInHours = 1.0;
+		// 3. TÍNH TOÁN TIỀN CỌC (Cấu hình sẵn trên sân nhân với số giờ thuê, có tính giờ cao điểm động)
+		double totalDeposit = 0.0;
 		if (booking.getFromTime() != null && booking.getToTime() != null) {
-			long minutes = java.time.Duration.between(booking.getFromTime(), booking.getToTime()).toMinutes();
-			durationInHours = minutes / 60.0;
-		}
-		if (durationInHours <= 0.0) {
-			durationInHours = 1.0;
+			java.time.LocalDateTime current = booking.getFromTime();
+			java.time.LocalDateTime end = booking.getToTime();
+			
+			double depositPerHour = field.getDepositAmount() != null ? field.getDepositAmount().doubleValue() : 0.0;
+			double depositPerMinute = depositPerHour / 60.0;
+			
+			double priceNormal = (field.getPricePerHour() != null && field.getPricePerHour().doubleValue() > 0) ? field.getPricePerHour().doubleValue() : 1.0;
+			double pricePeak = (field.getPricePerHourPeak() != null) ? field.getPricePerHourPeak().doubleValue() : (priceNormal * 1.3);
+			double peakMultiplier = pricePeak / priceNormal;
+			
+			while (current.isBefore(end)) {
+				java.time.LocalDateTime nextHour = current.plusHours(1);
+				if (nextHour.isAfter(end)) {
+					nextHour = end;
+				}
+				long minutesInThisSegment = java.time.Duration.between(current, nextHour).toMinutes();
+				int hour = current.getHour();
+				
+				// Giờ cao điểm từ 17h đến 20h (nhân hệ số cọc tương ứng với tỉ lệ giá cao điểm)
+				double multiplier = (hour >= 17 && hour < 20) ? peakMultiplier : 1.0;
+				totalDeposit += (depositPerMinute * minutesInThisSegment) * multiplier;
+				
+				current = nextHour;
+			}
+		} else {
+			double depositPerHour = field.getDepositAmount() != null ? field.getDepositAmount().doubleValue() : 0.0;
+			totalDeposit = depositPerHour;
 		}
 
-		BigDecimal depositBigDecimal = field.getDepositAmount() != null ? field.getDepositAmount() : BigDecimal.ZERO;
-		long amount = Math.round(depositBigDecimal.doubleValue() * durationInHours);
+		long amount = Math.round(totalDeposit);
 
 		// Nếu số tiền cọc bằng 0, duyệt luôn không cần cổng thanh toán
 		if (amount <= 0) {

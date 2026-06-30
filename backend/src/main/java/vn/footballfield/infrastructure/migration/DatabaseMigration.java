@@ -24,6 +24,8 @@ public class DatabaseMigration implements CommandLineRunner {
 
             // 2. Cập nhật bảng field
             jdbcTemplate.execute("ALTER TABLE field ADD COLUMN IF NOT EXISTS deposit_amount NUMERIC(38,2) DEFAULT 0.0");
+            jdbcTemplate.execute("ALTER TABLE field ADD COLUMN IF NOT EXISTS price_per_hour_peak NUMERIC(38,2)");
+            jdbcTemplate.execute("UPDATE field SET price_per_hour_peak = price_per_hour * 1.3 WHERE price_per_hour_peak IS NULL AND price_per_hour IS NOT NULL");
 
             // 3. Cập nhật bảng users (is_locked)
             jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT FALSE");
