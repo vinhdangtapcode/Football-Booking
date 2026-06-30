@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 import '../../../models/user.dart';
 import '../../../services/theme_service.dart';
@@ -383,7 +384,8 @@ class _OwnerSettingsScreenState extends State<OwnerSettingsScreen> {
                       leading: Icon(Icons.logout, color: Colors.redAccent),
                       title: Text("Đăng xuất"),
                       onTap: () {
-                        ApiService.logout();
+                        Provider.of<ThemeProvider>(context, listen: false).loadThemeForUser(null);
+                        Provider.of<AuthProvider>(context, listen: false).logout();
                         Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
                       },
                     ),

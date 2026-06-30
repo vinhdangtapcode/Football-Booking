@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../../../services/push_notification_service.dart';
+import '../../../services/theme_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -74,6 +75,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       }
     } else {
       PushNotificationService.openedFromNotification = false;
+      if (mounted) {
+        await context.read<ThemeProvider>().loadThemeForUser(null);
+      }
     }
 
     // Đợi cho đủ 2 giây (nếu logic xử lý nhanh hơn 2s)

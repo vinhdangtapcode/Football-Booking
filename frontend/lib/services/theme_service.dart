@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ThemeProvider with ChangeNotifier {
   static const String _themeKey = "theme_mode";
   bool _isModernMode = false;
+  int? _currentUserId;
 
   ThemeProvider() {
     _loadTheme();
@@ -19,7 +20,16 @@ class ThemeProvider with ChangeNotifier {
     _isModernMode = !_isModernMode;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_themeKey, _isModernMode);
+    final key = _currentUserId != null ? "${_themeKey}_$_currentUserId" : _themeKey;
+    await prefs.setBool(key, _isModernMode);
+  }
+
+  Future<void> loadThemeForUser(int? userId) async {
+    _currentUserId = userId;
+    final prefs = await SharedPreferences.getInstance();
+    final key = userId != null ? "${_themeKey}_$userId" : _themeKey;
+    _isModernMode = prefs.getBool(key) ?? false;
+    notifyListeners();
   }
 
   Future<void> _loadTheme() async {

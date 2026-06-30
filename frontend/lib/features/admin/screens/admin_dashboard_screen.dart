@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../services/theme_service.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../auth/repositories/auth_repository.dart';
 import '../tabs/admin_overview_tab.dart';
 import '../tabs/admin_stadiums_tab.dart';
@@ -27,6 +30,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     'Ví cọc & Đối soát',
     'Cấu hình & Hệ thống',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Tải cấu hình giao diện riêng của người dùng sau khi vào màn hình chính
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.currentUser != null) {
+        Provider.of<ThemeProvider>(context, listen: false).loadThemeForUser(authProvider.currentUser!.id);
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -72,6 +87,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
               );
               if (confirm == true) {
+                if (mounted) {
+                  Provider.of<ThemeProvider>(context, listen: false).loadThemeForUser(null);
+                }
                 await AuthRepository.logout();
                 if (mounted) {
                   Navigator.pushReplacementNamed(context, '/login');

@@ -9,6 +9,7 @@ import '../../profile/screens/settings_screen.dart';
 import '../../../services/api_service.dart';
 import '../../../services/theme_service.dart';
 import 'package:provider/provider.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../../main.dart'; // Import để sử dụng routeObserver
 
 class MainTabScaffold extends StatefulWidget {
@@ -42,6 +43,14 @@ class _MainTabScaffoldState extends State<MainTabScaffold> with WidgetsBindingOb
     _loadSeenNotifications();
     _fetchUnreadMessageCount();
     _startPolling();
+
+    // Tải cấu hình giao diện riêng của người dùng sau khi vào màn hình chính
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.currentUser != null) {
+        Provider.of<ThemeProvider>(context, listen: false).loadThemeForUser(authProvider.currentUser!.id);
+      }
+    });
   }
 
   @override

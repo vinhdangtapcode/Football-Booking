@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../services/api_service.dart';
+import '../../../services/theme_service.dart';
 import '../../../models/user.dart';
 
 class OwnerEditProfileScreen extends StatefulWidget {
@@ -57,6 +59,9 @@ class _OwnerEditProfileScreenState extends State<OwnerEditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isModern = themeProvider.isModernMode;
+
     // Nếu user được truyền qua arguments thì lấy lại nếu controller chưa có dữ liệu
     final User? argUser = ModalRoute.of(context)?.settings.arguments as User?;
     if (argUser != null && ownerNameController.text.isEmpty && emailController.text.isEmpty) {
@@ -65,21 +70,31 @@ class _OwnerEditProfileScreenState extends State<OwnerEditProfileScreen> {
       contactNumberController.text = argUser.phone ?? '';
     }
     return Scaffold(
+      backgroundColor: isModern ? Colors.black : const Color(0xFFF8F8F8),
       appBar: AppBar(
-        title: Text("Sửa thông tin chủ sân", style: TextStyle(color: Colors.amber[800], fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        title: Text(
+          "Sửa thông tin chủ sân",
+          style: TextStyle(
+            color: isModern ? Colors.white : Colors.amber[800],
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: isModern ? const Color(0xFF0A0B0E) : Colors.white,
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.amber[800]),
+        iconTheme: IconThemeData(color: isModern ? Colors.white : Colors.amber[800]),
       ),
-      backgroundColor: Color(0xFFF8F8F8),
       body: isLoading
-          ? Center(child: CircularProgressIndicator(color: Colors.amber))
+          ? Center(child: CircularProgressIndicator(color: isModern ? Colors.white : Colors.amber))
           : SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Card(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                  elevation: 6,
+                  color: isModern ? const Color(0xFF16181D) : Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    side: isModern ? const BorderSide(color: Colors.white24) : BorderSide.none,
+                  ),
+                  elevation: isModern ? 0 : 6,
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Form(
@@ -89,59 +104,65 @@ class _OwnerEditProfileScreenState extends State<OwnerEditProfileScreen> {
                         children: [
                           TextFormField(
                             controller: ownerNameController,
+                            style: TextStyle(color: isModern ? Colors.white : Colors.black87),
                             decoration: InputDecoration(
                               labelText: "Tên chủ sân",
-                              prefixIcon: Icon(Icons.person, color: Colors.amber),
+                              labelStyle: TextStyle(color: isModern ? Colors.white70 : null),
+                              prefixIcon: Icon(Icons.person, color: isModern ? Colors.white70 : Colors.amber),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                             ),
                             validator: (v) => v!.isEmpty ? 'Không được để trống' : null,
                           ),
-                          SizedBox(height: 16),
+                          const SizedBox(height: 16),
                           TextFormField(
                             controller: emailController,
+                            style: TextStyle(color: isModern ? Colors.white : Colors.black87),
                             decoration: InputDecoration(
                               labelText: "Email",
-                              prefixIcon: Icon(Icons.email, color: Colors.amber),
+                              labelStyle: TextStyle(color: isModern ? Colors.white70 : null),
+                              prefixIcon: Icon(Icons.email, color: isModern ? Colors.white70 : Colors.amber),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                             ),
                             validator: (v) => v!.isEmpty ? 'Không được để trống' : null,
                           ),
-                          SizedBox(height: 16),
+                          const SizedBox(height: 16),
                           TextFormField(
                             controller: contactNumberController,
+                            style: TextStyle(color: isModern ? Colors.white : Colors.black87),
                             decoration: InputDecoration(
                               labelText: "Số điện thoại",
-                              prefixIcon: Icon(Icons.phone, color: Colors.amber),
+                              labelStyle: TextStyle(color: isModern ? Colors.white70 : null),
+                              prefixIcon: Icon(Icons.phone, color: isModern ? Colors.white70 : Colors.amber),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                             ),
                           ),
-                          SizedBox(height: 24),
+                          const SizedBox(height: 24),
                           Row(
                             children: [
                               Expanded(
                                 child: ElevatedButton.icon(
                                   onPressed: _saveOwnerProfile,
-                                  icon: Icon(Icons.save, color: Colors.white),
-                                  label: Text("Lưu", style: TextStyle(fontWeight: FontWeight.bold)),
+                                  icon: Icon(Icons.save, color: isModern ? Colors.black : Colors.white),
+                                  label: const Text("Lưu", style: TextStyle(fontWeight: FontWeight.bold)),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.amber[800],
-                                    foregroundColor: Colors.white,
-                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    backgroundColor: isModern ? Colors.white : Colors.amber[800],
+                                    foregroundColor: isModern ? Colors.black : Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                   ),
                                 ),
                               ),
-                              SizedBox(width: 12),
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: OutlinedButton.icon(
                                   onPressed: () => Navigator.pop(context),
-                                  icon: Icon(Icons.cancel, color: Colors.amber),
-                                  label: Text("Hủy"),
+                                  icon: Icon(Icons.cancel, color: isModern ? Colors.white : Colors.amber),
+                                  label: const Text("Hủy"),
                                   style: OutlinedButton.styleFrom(
-                                    side: BorderSide(color: Colors.amber, width: 2),
-                                    foregroundColor: Colors.amber,
+                                    side: BorderSide(color: isModern ? Colors.white30 : Colors.amber, width: 2),
+                                    foregroundColor: isModern ? Colors.white : Colors.amber,
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
                                   ),
                                 ),
                               ),

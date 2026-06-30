@@ -385,6 +385,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       leading: Icon(Icons.logout, color: Colors.redAccent),
                       title: Text("Đăng xuất"),
                       onTap: () {
+                        Provider.of<ThemeProvider>(context, listen: false).loadThemeForUser(null);
                         Provider.of<AuthProvider>(context, listen: false).logout();
                         Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
                       },

@@ -46,6 +46,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void logout() {
+    Provider.of<ThemeProvider>(context, listen: false).loadThemeForUser(null);
     Provider.of<AuthProvider>(context, listen: false).logout();
     Navigator.pushReplacementNamed(context, '/login');
   }
