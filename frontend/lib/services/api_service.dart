@@ -8,14 +8,19 @@ import '../models/field.dart';
 import '../models/booking.dart';
 import '../models/rating.dart';
 import '../models/favorite.dart';
+import '../core/network/api_client.dart';
+import '../core/constants/app_constants.dart';
 
-// Sử dụng http://10.0.2.2:8080 để kết nối local backend từ Android Emulator
-// Sử dụng http://localhost:8080 nếu chạy iOS Emulator hoặc Web
-// Sử dụng http://178.128.62.29:8080 để kết nối lên cloud server
-const String baseUrl = "http://10.0.2.2:8080";
+// Sử dụng AppConstants.baseUrl để đồng bộ cấu hình URL với ApiClient
+const String baseUrl = AppConstants.baseUrl;
 
 class ApiService {
-  static String? _token;
+  static String? get _token => ApiClient.token;
+  static set _token(String? value) {
+    if (value != null) {
+      ApiClient.setToken(value);
+    }
+  }
   static User? _currentUser;
   static const String _tokenKey = 'jwt_token';
   static const String _userRoleKey = 'user_role';
@@ -60,7 +65,7 @@ class ApiService {
 
   // Xóa token khi logout
   static Future<void> clearToken() async {
-    _token = null;
+    await ApiClient.clearToken();
     _currentUser = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);

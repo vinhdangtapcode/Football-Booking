@@ -1,0 +1,252 @@
+import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
+import '../../../models/field.dart';
+import '../../../services/theme_service.dart';
+import '../providers/field_provider.dart';
+
+class FavoritesScreen extends StatefulWidget {
+  @override
+  _FavoritesScreenState createState() => _FavoritesScreenState();
+}
+
+class _FavoritesScreenState extends State<FavoritesScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<FieldProvider>().loadFavoriteFields();
+    });
+  }
+
+  void removeFavorite(Field field) async {
+    await context.read<FieldProvider>().toggleFavorite(field);
+  }
+
+  Widget buildFavoriteItem(Field field) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isModern = themeProvider.isModernMode;
+
+    return Card(
+      color: isModern ? Color(0xFF121212) : null,
+      elevation: isModern ? 1 : 4,
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isModern ? BorderSide(color: Colors.white10) : BorderSide.none,
+      ),
+      child: InkWell(
+        onTap: () {
+          Navigator.pushNamed(context, '/fieldDetail', arguments: field);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8.0),
+                child: field.imageUrl?.isEmpty ?? true
+                    ? Image.asset(
+                        'lib/assets/images/san_bong.png',
+                        width: 100,
+                        height: 100,
+                        fit: BoxFit.cover,
+                      )
+                    : CachedNetworkImage(
+                        imageUrl: field.imageUrl!,
+                        width: 100,
+                        height: 100,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => const SizedBox(
+                          width: 100,
+                          height: 100,
+                          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        ),
+                        errorWidget: (_, __, ___) => Image.asset(
+                          'lib/assets/images/san_bong.png',
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      field.name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: isModern ? Colors.white : Colors.amber[800],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.location_on, color: isModern ? Colors.white70 : Colors.amber[600], size: 16),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            field.address,
+                            style: TextStyle(color: isModern ? Colors.white70 : Colors.grey[700], fontSize: 14),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    // Sử dụng Wrap và thay đổi cách hiển thị thông tin để tránh tràn
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        // Phần rating
+                        Container(
+                          constraints: BoxConstraints(maxWidth: 80),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.star, color: Colors.amber, size: 14),
+                              const SizedBox(width: 2),
+                              Flexible(
+                                child: Text(
+                                  '${field.rating?.toStringAsFixed(1) ?? 'N/A'}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: isModern ? Colors.amber[400] : Colors.amber[800],
+                                    fontSize: 12,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Phần giá
+                        Container(
+                          constraints: BoxConstraints(maxWidth: 100),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.monetization_on, color: isModern ? Colors.white70 : Colors.green[600], size: 14),
+                              const SizedBox(width: 2),
+                              Flexible(
+                                child: Text(
+                                  field.pricePerHour.toStringAsFixed(0),
+                                  style: TextStyle(
+                                    color: isModern ? Colors.white70 : Colors.green[700],
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 12,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.favorite, color: Colors.red[400]),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      backgroundColor: isModern ? Color(0xFF121212) : null,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      title: Text('Xác nhận', style: TextStyle(color: isModern ? Colors.white : null)),
+                      content: Text('Bạn có muốn xóa sân này khỏi danh sách yêu thích không?', style: TextStyle(color: isModern ? Colors.white70 : null)),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text('Hủy', style: TextStyle(color: isModern ? Colors.white70 : null)),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            removeFavorite(field);
+                          },
+                          child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                tooltip: 'Xóa khỏi yêu thích',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final isModern = themeProvider.isModernMode;
+    final fieldProvider = context.watch<FieldProvider>();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          "Sân yêu thích",
+        ),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: isModern ? Colors.white : Colors.amber[900]),
+            onPressed: fieldProvider.loadFavoriteFields,
+            tooltip: 'Làm mới',
+          ),
+        ],
+      ),
+      backgroundColor: isModern ? Colors.black : Colors.grey[100],
+      body: fieldProvider.isLoading
+          ? Center(child: CircularProgressIndicator(color: isModern ? Colors.white : Colors.amber))
+          : fieldProvider.favoriteFields.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.favorite_border, size: 80, color: isModern ? Colors.white24 : Colors.amber[300]),
+                      SizedBox(height: 16),
+                      Text(
+                        "Bạn chưa có sân yêu thích nào!",
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: isModern ? Colors.white : Colors.amber[800],
+                          fontWeight: FontWeight.bold
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        "Hãy thêm sân yêu thích từ màn hình chi tiết sân",
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isModern ? Colors.white70 : Colors.grey[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: fieldProvider.favoriteFields.length,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemBuilder: (context, index) {
+                    return buildFavoriteItem(fieldProvider.favoriteFields[index]);
+                  },
+                ),
+    );
+  }
+}

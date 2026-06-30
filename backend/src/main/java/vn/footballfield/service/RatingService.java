@@ -42,7 +42,7 @@ public class RatingService {
 		return savedRating;
 	}
 
-	public Rating updateRating(Integer ratingId, Integer customerId, vn.footballfield.dto.RatingForm form) {
+	public Rating updateRating(Integer ratingId, Integer customerId, vn.footballfield.dto.rating.RatingForm form) {
 		Optional<Rating> optionalRating = ratingRepository.findById(ratingId);
 		if (optionalRating.isEmpty()) {
 			return null;

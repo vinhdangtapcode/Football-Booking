@@ -7,9 +7,9 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import vn.footballfield.config.JwtUtil;
-import vn.footballfield.dto.LoginRequest;
-import vn.footballfield.dto.LoginResponse;
+import vn.footballfield.infrastructure.security.JwtUtil;
+import vn.footballfield.dto.auth.LoginRequest;
+import vn.footballfield.dto.auth.LoginResponse;
 import vn.footballfield.entity.User;
 import vn.footballfield.service.UserService;
 
@@ -110,7 +110,7 @@ public class UserController {
 	}
 
 	@PostMapping("/change-password")
-	public ResponseEntity<?> changePassword(@RequestBody vn.footballfield.dto.ChangePasswordRequest request) {
+	public ResponseEntity<?> changePassword(@RequestBody vn.footballfield.dto.user.ChangePasswordRequest request) {
 		String email = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication()
 				.getName();
 		try {
@@ -124,7 +124,7 @@ public class UserController {
 	// ADMIN reset password cho user khác
 	@PostMapping("/{id:\\d+}/reset-password")
 	public ResponseEntity<?> adminResetPassword(@PathVariable Integer id,
-			@Valid @RequestBody vn.footballfield.dto.AdminResetPasswordRequest request) {
+			@Valid @RequestBody vn.footballfield.dto.user.AdminResetPasswordRequest request) {
 		try {
 			userService.adminResetPassword(id, request.getNewPassword());
 			return ResponseEntity.ok("Password has been reset successfully");
