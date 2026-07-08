@@ -274,7 +274,7 @@ class _BookingScreenState extends State<BookingScreen> {
           if (createdBooking.status == 'APPROVED' || (createdBooking.totalPrice ?? 0.0) <= 0.0) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Đặt sân thành công! ⚽'),
+                content: Text('Đặt sân thành công!'),
                 backgroundColor: Colors.green,
               ),
             );

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/notification_provider.dart';
 import '../../../services/theme_service.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../models/field.dart';
+import '../../field/repositories/field_repository.dart';
 
 class NotificationsScreen extends StatefulWidget {
   @override
@@ -146,16 +149,56 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               padding: EdgeInsets.zero,
             ),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Vui lòng vào mục "Lịch sử đặt sân" để đánh giá sân.')),
+            onPressed: () async {
+              final fieldId = noti['fieldId'];
+              if (fieldId == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Không tìm thấy thông tin sân để đánh giá.')),
+                );
+                return;
+              }
+
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(
+                  child: CircularProgressIndicator(),
+                ),
               );
+
+              try {
+                final field = await FieldRepository.getFieldById(fieldId);
+                if (mounted) {
+                  Navigator.pop(context); // Đóng loading dialog
+                  if (field != null) {
+                    Navigator.pushNamed(
+                      context,
+                      AppConstants.addRating,
+                      arguments: field,
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Không thể tải thông tin sân bóng.')),
+                    );
+                  }
+                }
+              } catch (e) {
+                if (mounted) {
+                  Navigator.pop(context); // Đóng loading dialog
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Lỗi tải sân bóng: $e')),
+                  );
+                }
+              }
             },
           ),
         ),
       );
     }
-    if (type == 'BOOKING_REMINDER') {
+    if (type == 'BOOKING_REMINDER' ||
+        type == 'BOOKING_CONFIRMED' ||
+        type == 'BOOKING_CANCELLED_BY_USER' ||
+        type == 'BOOKING_CANCELLED_BY_ADMIN') {
       return Padding(
         padding: const EdgeInsets.only(left: 14, right: 14, bottom: 12),
         child: SizedBox(
@@ -171,7 +214,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               padding: EdgeInsets.zero,
             ),
             onPressed: () {
-              Navigator.of(context).pop();
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppConstants.bookingHistory,
+                (route) => false,
+              );
             },
           ),
         ),

@@ -16,6 +16,19 @@ class FieldRepository {
     return [];
   }
 
+  static Future<Field?> getFieldById(int id) async {
+    try {
+      final response = await ApiClient.get('/api/stadiums/$id');
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        return Field.fromJson(decoded);
+      }
+    } catch (e) {
+      print("Error in getFieldById: $e");
+    }
+    return null;
+  }
+
   static Future<List<Field>> getFields() async {
     try {
       final response = await ApiClient.get('/api/stadiums');

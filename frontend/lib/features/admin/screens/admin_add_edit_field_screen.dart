@@ -179,7 +179,7 @@ class _AdminAddEditFieldScreenState extends State<AdminAddEditFieldScreen> {
     bool success = await ApiService.deleteFieldImage(imageId);
     if (success) {
       await _loadExistingImages();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ Đã xóa ảnh'), backgroundColor: Colors.green));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Đã xóa ảnh'), backgroundColor: Colors.green));
     }
   }
 
@@ -216,7 +216,7 @@ class _AdminAddEditFieldScreenState extends State<AdminAddEditFieldScreen> {
                             bool success = await ApiService.setPrimaryImage(img['id']);
                             if (success) {
                               await _loadExistingImages();
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ Đã chọn làm ảnh đại diện'), backgroundColor: Colors.green));
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Đã chọn làm ảnh đại diện'), backgroundColor: Colors.green));
                             }
                           },
                           child: CachedNetworkImage(
@@ -322,7 +322,7 @@ class _AdminAddEditFieldScreenState extends State<AdminAddEditFieldScreen> {
           });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('✅ Tạo sân thành công!'),
+              content: Text('Tạo sân thành công!'),
               backgroundColor: Colors.green,
             ),
           );
@@ -351,7 +351,7 @@ class _AdminAddEditFieldScreenState extends State<AdminAddEditFieldScreen> {
           });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('✅ Cập nhật sân thành công!'),
+              content: Text('Cập nhật sân thành công!'),
               backgroundColor: Colors.green,
             ),
           );

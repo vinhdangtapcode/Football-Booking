@@ -88,7 +88,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           await closeInAppWebView();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Đặt sân và thanh toán thành công! ⚽'),
+              content: Text('Đặt sân và thanh toán thành công!'),
               backgroundColor: Colors.green,
             ),
           );

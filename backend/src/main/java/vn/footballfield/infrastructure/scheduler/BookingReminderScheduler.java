@@ -106,7 +106,7 @@ public class BookingReminderScheduler {
                 if (!hasRated) {
                     String fieldName = booking.getField().getName();
                     String reviewMsg = "⭐ Bạn vừa kết thúc trận đấu tại '" + fieldName + "'. Hãy để lại đánh giá để giúp cộng đồng nhé!";
-                    saveNotification(customerId, reviewMsg, "REVIEW_REQUEST");
+                    saveNotification(customerId, reviewMsg, "REVIEW_REQUEST", fieldId);
 
                     vn.footballfield.entity.User customer = userRepository.findById(customerId).orElse(null);
                     if (customer != null && customer.getFcmToken() != null) {
@@ -128,10 +128,15 @@ public class BookingReminderScheduler {
     }
 
     private void saveNotification(Integer userId, String message, String type) {
+        saveNotification(userId, message, type, null);
+    }
+
+    private void saveNotification(Integer userId, String message, String type, Integer fieldId) {
         Notification noti = new Notification();
         noti.setUserId(userId);
         noti.setMessage(message);
         noti.setType(type);
+        noti.setFieldId(fieldId);
         notificationRepository.save(noti);
     }
 }

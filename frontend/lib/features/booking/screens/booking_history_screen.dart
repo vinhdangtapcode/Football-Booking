@@ -407,7 +407,7 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
                 if (success) {
                   ScaffoldMessenger.of(parentContext).showSnackBar(
                     const SnackBar(
-                      content: Text("Hủy đặt sân thành công! Khung giờ đã được giải phóng. ❌"),
+                      content: Text("Hủy đặt sân thành công! Khung giờ đã được giải phóng."),
                       backgroundColor: Colors.green,
                     ),
                   );

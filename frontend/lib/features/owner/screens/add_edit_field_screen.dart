@@ -195,7 +195,7 @@ class _AddEditFieldScreenState extends State<AddEditFieldScreen> {
     bool success = await ApiService.deleteFieldImage(imageId);
     if (success) {
       await _loadExistingImages();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ Đã xóa ảnh'), backgroundColor: Colors.green));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Đã xóa ảnh'), backgroundColor: Colors.green));
     }
   }
 
@@ -236,7 +236,7 @@ class _AddEditFieldScreenState extends State<AddEditFieldScreen> {
                             bool success = await ApiService.setPrimaryImage(img['id']);
                             if (success) {
                               await _loadExistingImages();
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ Đã chọn làm ảnh đại diện'), backgroundColor: Colors.green));
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Đã chọn làm ảnh đại diện'), backgroundColor: Colors.green));
                             }
                           },
                           child: CachedNetworkImage(
@@ -353,7 +353,7 @@ class _AddEditFieldScreenState extends State<AddEditFieldScreen> {
             await ApiService.uploadFieldImages(createdField.id!, _newImages);
             setState(() { _isUploadingImages = false; });
           }
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ Tạo sân thành công!'), backgroundColor: Colors.green));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Tạo sân thành công!'), backgroundColor: Colors.green));
           Navigator.pop(context);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Tạo sân thất bại")));
@@ -369,7 +369,7 @@ class _AddEditFieldScreenState extends State<AddEditFieldScreen> {
             await ApiService.uploadFieldImages(field!.id!, _newImages);
             setState(() { _isUploadingImages = false; });
           }
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ Cập nhật sân thành công!'), backgroundColor: Colors.green));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cập nhật sân thành công!'), backgroundColor: Colors.green));
           Navigator.pop(context);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Cập nhật sân thất bại")));
