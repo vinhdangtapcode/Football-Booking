@@ -38,6 +38,7 @@ class Booking {
             'name': json['fieldName'] ?? '',
             'address': json['fieldAddress'] ?? '',
             'pricePerHour': json['pricePerHour'] ?? 0.0,
+            'imageUrl': json['fieldImageUrl'],
           };
 
     return Booking(

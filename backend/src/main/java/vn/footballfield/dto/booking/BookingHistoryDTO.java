@@ -17,8 +17,9 @@ public class BookingHistoryDTO {
     private String status;
     private Double totalPrice;
     private String paymentUrl;
+    private String fieldImageUrl;
 
-    public BookingHistoryDTO(Integer id, Integer fieldId, String fieldName, String fieldAddress, Double pricePerHour, LocalDateTime fromTime, LocalDateTime toTime, String additional, String customerName, String customerPhone, String status, Double totalPrice, String paymentUrl) {
+    public BookingHistoryDTO(Integer id, Integer fieldId, String fieldName, String fieldAddress, Double pricePerHour, LocalDateTime fromTime, LocalDateTime toTime, String additional, String customerName, String customerPhone, String status, Double totalPrice, String paymentUrl, String fieldImageUrl) {
         this.id = id;
         this.fieldId = fieldId;
         this.fieldName = fieldName;
@@ -32,6 +33,7 @@ public class BookingHistoryDTO {
         this.status = status;
         this.totalPrice = totalPrice;
         this.paymentUrl = paymentUrl;
+        this.fieldImageUrl = fieldImageUrl;
     }
 
     public Integer getId() { return id; }
@@ -60,6 +62,8 @@ public class BookingHistoryDTO {
     public void setTotalPrice(Double totalPrice) { this.totalPrice = totalPrice; }
     public String getPaymentUrl() { return paymentUrl; }
     public void setPaymentUrl(String paymentUrl) { this.paymentUrl = paymentUrl; }
+    public String getFieldImageUrl() { return fieldImageUrl; }
+    public void setFieldImageUrl(String fieldImageUrl) { this.fieldImageUrl = fieldImageUrl; }
 }
 
 

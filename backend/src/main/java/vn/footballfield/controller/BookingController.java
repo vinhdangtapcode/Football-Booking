@@ -52,7 +52,8 @@ public class BookingController {
 					b.getCustomerPhone(),
 					b.getStatus(),
 					b.getTotalPrice(),
-					b.getPaymentUrl()
+					b.getPaymentUrl(),
+					b.getField() != null ? b.getField().getImageUrl() : null
 				))
 				.map(dto -> new ResponseEntity<>(dto, HttpStatus.OK))
 				.orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
@@ -76,7 +77,8 @@ public class BookingController {
 				b.getCustomerPhone(),
 				b.getStatus(),
 				b.getTotalPrice(),
-				b.getPaymentUrl()
+				b.getPaymentUrl(),
+				b.getField() != null ? b.getField().getImageUrl() : null
 			))
 			.toList();
 		return new ResponseEntity<>(result, HttpStatus.OK);

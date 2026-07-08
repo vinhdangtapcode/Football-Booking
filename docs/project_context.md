@@ -22,6 +22,10 @@ Dự án là một hệ thống đặt sân bóng đá toàn diện (Monorepo), 
 1.  **Bỏ qua màn hình thanh toán VietQR khi tiền cọc = 0**:
     *   Cập nhật [booking_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/booking/screens/booking_screen.dart) để kiểm tra trạng thái và số tiền cọc của đặt sân mới được tạo.
     *   Nếu đặt sân có trạng thái `APPROVED` hoặc có số tiền cọc (`totalPrice`) bằng 0, hệ thống sẽ bỏ qua màn hình thanh toán VietQR, hiển thị thông báo đặt sân thành công bằng SnackBar và quay lại màn hình chi tiết sân ngay lập tức.
+2.  **Hiển thị hình ảnh sân bóng trong lịch sử đặt sân**:
+    *   Bổ sung thuộc tính `fieldImageUrl` vào lớp DTO backend [BookingHistoryDTO.java](file:///c:/Users/Admin/IdeaProjects/football_booking/backend/src/main/java/vn/footballfield/dto/booking/BookingHistoryDTO.java).
+    *   Cập nhật [BookingController.java](file:///c:/Users/Admin/IdeaProjects/football_booking/backend/src/main/java/vn/footballfield/controller/BookingController.java) để truyền link ảnh của sân bóng thông qua DTO.
+    *   Cập nhật [booking.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/models/booking.dart) của Flutter để ánh xạ trường `fieldImageUrl` vào `imageUrl` của sân bóng, giúp hiển thị ảnh thật của sân bóng thay vì ảnh mặc định trên màn hình lịch sử đặt sân.
 
 ### 30/06/2026:
 1.  **Đồng bộ hóa Token bảo mật**:
