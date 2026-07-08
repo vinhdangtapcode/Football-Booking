@@ -18,6 +18,11 @@ Dự án là một hệ thống đặt sân bóng đá toàn diện (Monorepo), 
 
 ## 2. Các thay đổi và cập nhật gần đây (Recent Changes)
 
+### 09/07/2026:
+1.  **Bỏ qua màn hình thanh toán VietQR khi tiền cọc = 0**:
+    *   Cập nhật [booking_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/booking/screens/booking_screen.dart) để kiểm tra trạng thái và số tiền cọc của đặt sân mới được tạo.
+    *   Nếu đặt sân có trạng thái `APPROVED` hoặc có số tiền cọc (`totalPrice`) bằng 0, hệ thống sẽ bỏ qua màn hình thanh toán VietQR, hiển thị thông báo đặt sân thành công bằng SnackBar và quay lại màn hình chi tiết sân ngay lập tức.
+
 ### 30/06/2026:
 1.  **Đồng bộ hóa Token bảo mật**:
     *   Đã đồng bộ hóa token JWT giữa hệ thống mới (`ApiClient`) và hệ thống cũ (`ApiService`). Các màn hình cũ (như Owner/Admin) vẫn hoạt động chính xác bằng cách tự động đính kèm Token từ `ApiClient`.

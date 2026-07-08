@@ -271,14 +271,24 @@ class _BookingScreenState extends State<BookingScreen> {
         _addNotification('Đặt sân "${field!.name}" thành công lúc ${fromTime.hour.toString().padLeft(2, '0')}:00 - ${toTime.hour.toString().padLeft(2, '0')}:00 ngày ${fromTime.day}/${fromTime.month}');
         
         if (mounted) {
-          final isSuccess = await Navigator.pushNamed(
-            context,
-            '/payment',
-            arguments: createdBooking,
-          );
-          
-          if (isSuccess == true) {
+          if (createdBooking.status == 'APPROVED' || (createdBooking.totalPrice ?? 0.0) <= 0.0) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Đặt sân thành công! ⚽'),
+                backgroundColor: Colors.green,
+              ),
+            );
             Navigator.pop(context);
+          } else {
+            final isSuccess = await Navigator.pushNamed(
+              context,
+              '/payment',
+              arguments: createdBooking,
+            );
+            
+            if (isSuccess == true) {
+              Navigator.pop(context);
+            }
           }
         }
       } else {
