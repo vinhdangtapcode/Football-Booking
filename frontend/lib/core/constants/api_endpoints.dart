@@ -44,7 +44,7 @@ class ApiEndpoints {
   static const String adminConfig = '/api/admin/config';
   static const String adminAuditLog = '/api/admin/audit-log';
   static const String adminOwners = '/api/admin/owners';
-  static const String adminBroadcast = '/api/admin/broadcast';
+  static const String adminBroadcast = '/api/admin/notifications/broadcast';
   
   // Admin Stadiums & Revenue
   static const String adminStadiumsBase = '/api/stadiums';
