@@ -56,9 +56,9 @@ class _AddEditFieldScreenState extends State<AddEditFieldScreen> {
         addressController.text = field!.address;
         typeController.text = field!.type ?? "";
         facilitiesController.text = field!.facilities ?? "";
-        priceController.text = field!.pricePerHour.toString();
-        peakPriceController.text = field!.pricePerHourPeak?.toString() ?? "";
-        depositController.text = field!.depositAmount.toString();
+        priceController.text = field!.pricePerHour.toInt().toString();
+        peakPriceController.text = field!.pricePerHourPeak?.toInt().toString() ?? "";
+        depositController.text = field!.depositAmount.toInt().toString();
         lengthController.text = field!.length?.toString() ?? "70";
         widthController.text = field!.width?.toString() ?? "50";
         grassTypeController.text = field!.grassType ?? "";
