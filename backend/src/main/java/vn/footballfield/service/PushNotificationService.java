@@ -127,4 +127,33 @@ public class PushNotificationService {
 
         return true;
     }
+
+    /**
+     * Send silent data message to a topic for real-time sync
+     * 
+     * @param topic Target topic
+     * @param data  Data payload
+     * @return true if scheduled successfully
+     */
+    public boolean sendTopicDataMessage(String topic, java.util.Map<String, String> data) {
+        if (topic == null || topic.isEmpty()) {
+            return false;
+        }
+
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try {
+                Message message = Message.builder()
+                        .setTopic(topic)
+                        .putAllData(data)
+                        .build();
+
+                String response = FirebaseMessaging.getInstance().send(message);
+                System.out.println("FCM topic data message sent successfully: " + response);
+            } catch (Exception e) {
+                System.err.println("Failed to send FCM topic data message: " + e.getMessage());
+            }
+        });
+
+        return true;
+    }
 }

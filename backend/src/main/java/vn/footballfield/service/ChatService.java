@@ -31,6 +31,9 @@ public class ChatService {
     @Autowired
     private FieldRepository fieldRepository;
 
+    @Autowired
+    private PushNotificationService pushNotificationService;
+
     /**
      * Get or create a conversation between user and owner
      */
@@ -142,6 +145,40 @@ public class ChatService {
         }
 
         conversationRepository.save(conversation);
+
+        // Gửi thông báo đẩy bất đồng bộ cho bên nhận tin nhắn
+        try {
+            String recipientFcmToken = null;
+            String senderName = "";
+
+            if ("USER".equals(senderType)) {
+                senderName = conversation.getUser().getName();
+                Owner owner = conversation.getOwner();
+                User ownerUser = userRepository.findByEmail(owner.getEmail()).orElse(null);
+                if (ownerUser != null) {
+                    recipientFcmToken = ownerUser.getFcmToken();
+                }
+            } else {
+                senderName = conversation.getOwner().getOwnerName();
+                recipientFcmToken = conversation.getUser().getFcmToken();
+            }
+
+            if (recipientFcmToken != null && !recipientFcmToken.trim().isEmpty()) {
+                final String fToken = recipientFcmToken;
+                final String title = "Tin nhắn mới từ " + senderName;
+                final String body = content.length() > 60 ? content.substring(0, 60) + "..." : content;
+
+                new Thread(() -> {
+                    try {
+                        pushNotificationService.sendNotification(fToken, title, body);
+                    } catch (Exception e) {
+                        System.err.println("Gửi FCM tin nhắn thất bại: " + e.getMessage());
+                    }
+                }).start();
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi thiết lập FCM tin nhắn: " + e.getMessage());
+        }
 
         return toMessageDTO(saved);
     }

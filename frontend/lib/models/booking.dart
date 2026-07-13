@@ -31,15 +31,34 @@ class Booking {
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
-    final fieldJson = json['field'] != null
-        ? Map<String, dynamic>.from(json['field'])
-        : <String, dynamic>{
-            'id': json['fieldId'],
-            'name': json['fieldName'] ?? '',
-            'address': json['fieldAddress'] ?? '',
-            'pricePerHour': json['pricePerHour'] ?? 0.0,
-            'imageUrl': json['fieldImageUrl'],
-          };
+    Map<String, dynamic> fieldJson;
+    if (json['field'] != null) {
+      fieldJson = Map<String, dynamic>.from(json['field']);
+      if (fieldJson['owner'] == null && (json['ownerName'] != null || json['ownerPhone'] != null)) {
+        fieldJson['owner'] = {
+          'id': 0,
+          'ownerName': json['ownerName'] ?? '',
+          'contactNumber': json['ownerPhone'] ?? '',
+          'email': '',
+        };
+      }
+    } else {
+      fieldJson = <String, dynamic>{
+        'id': json['fieldId'],
+        'name': json['fieldName'] ?? '',
+        'address': json['fieldAddress'] ?? '',
+        'pricePerHour': json['pricePerHour'] ?? 0.0,
+        'imageUrl': json['fieldImageUrl'],
+        'owner': (json['ownerName'] != null || json['ownerPhone'] != null)
+            ? {
+                'id': 0,
+                'ownerName': json['ownerName'] ?? '',
+                'contactNumber': json['ownerPhone'] ?? '',
+                'email': '',
+              }
+            : null,
+      };
+    }
 
     return Booking(
       id: json['id'],

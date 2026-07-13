@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui';
 import '../../../models/booking.dart';
@@ -114,6 +115,7 @@ class _FieldBookingHistoryScreenState extends State<FieldBookingHistoryScreen> {
     required String value,
     required bool isModern,
     required ThemeProvider themeProvider,
+    Widget? trailing,
   }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,6 +151,13 @@ class _FieldBookingHistoryScreenState extends State<FieldBookingHistoryScreen> {
             ],
           ),
         ),
+        if (trailing != null) ...[
+          const SizedBox(width: 10),
+          Padding(
+            padding: const EdgeInsets.only(top: 14),
+            child: trailing,
+          ),
+        ],
       ],
     );
   }
@@ -297,6 +306,31 @@ class _FieldBookingHistoryScreenState extends State<FieldBookingHistoryScreen> {
                           value: booking.customerPhone!,
                           isModern: isModern,
                           themeProvider: themeProvider,
+                          trailing: GestureDetector(
+                            onTap: () {
+                              Clipboard.setData(ClipboardData(text: booking.customerPhone!));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Row(
+                                    children: [
+                                      const Icon(Icons.check_circle_outline, color: Colors.greenAccent, size: 20),
+                                      const SizedBox(width: 12),
+                                      const Text("Đã sao chép số điện thoại!", style: TextStyle(fontFamily: 'Roboto', fontSize: 13.5)),
+                                    ],
+                                  ),
+                                  backgroundColor: const Color(0xFF1E222B),
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                            child: Icon(
+                              Icons.copy_rounded,
+                              size: 16,
+                              color: isModern ? themeProvider.accentColor : Colors.amber.shade800,
+                            ),
+                          ),
                         ),
                       ],
                       if (booking.additional != null && booking.additional!.trim().isNotEmpty) ...[

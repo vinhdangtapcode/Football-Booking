@@ -185,6 +185,52 @@ public class BookingService {
 			savedBooking.setPaymentUrl(response.getCheckoutUrl());
 			savedBooking.setPaymentLinkId(response.getPaymentLinkId());
 			savedBooking = bookingRepository.save(savedBooking);
+
+			// Gửi thông báo đến chủ sân khi có khách xác nhận đặt sân và ở trạng thái chờ thanh toán
+			try {
+				if (field != null && field.getOwner() != null) {
+					vn.footballfield.entity.Owner owner = field.getOwner();
+					vn.footballfield.entity.User ownerUser = null;
+					if (owner != null && owner.getEmail() != null) {
+						ownerUser = userRepository.findByEmail(owner.getEmail()).orElse(null);
+					}
+					if (ownerUser != null) {
+						String slotStr = formatBookingSlot(savedBooking.getFromTime(), savedBooking.getToTime());
+						String customerName = customer != null ? customer.getName() : "Khách hàng";
+
+						Notification ownerNoti = new Notification();
+						ownerNoti.setUserId(ownerUser.getId());
+						String ownerMessage = "Sân '" + field.getName() + "' của bạn đang có lịch chờ thanh toán cọc từ " + customerName + " khung giờ " + slotStr + ".";
+						ownerNoti.setMessage(ownerMessage);
+						ownerNoti.setType("BOOKING_PENDING");
+						notificationRepository.save(ownerNoti);
+
+						// Gửi push notification cho chủ sân
+						if (ownerUser.getFcmToken() != null) {
+							pushNotificationService.sendNotification(
+									ownerUser.getFcmToken(),
+									"Lịch đặt chờ thanh toán cọc! ⏳",
+									customerName + " đang thực hiện đặt sân '" + field.getName() + "' khung giờ " + slotStr + " (chờ cọc)."
+							);
+						}
+					}
+				}
+			} catch (Exception e) {
+				System.err.println("Gửi thông báo chờ thanh toán cọc cho chủ sân thất bại: " + e.getMessage());
+			}
+
+			// Gửi thông báo đẩy cập nhật realtime cho các client đang xem màn hình đặt sân để khóa slot tạm thời
+			try {
+				java.util.Map<String, String> syncData = new java.util.HashMap<>();
+				syncData.put("type", "REALTIME_BOOKING_UPDATE");
+				syncData.put("fieldId", field.getId().toString());
+				if (savedBooking.getFromTime() != null) {
+					syncData.put("date", savedBooking.getFromTime().format(DATE_FORMATTER));
+				}
+				pushNotificationService.sendTopicDataMessage("booking_updates", syncData);
+			} catch (Exception e) {
+				System.err.println("Gửi tin nhắn realtime sync PENDING thất bại: " + e.getMessage());
+			}
 		} catch (Exception e) {
 			bookingRepository.delete(savedBooking);
 			throw new RuntimeException("Lỗi khởi tạo cổng thanh toán PayOS: " + e.getMessage());
@@ -200,6 +246,21 @@ public class BookingService {
 		bookingRepository.save(booking);
 
 		Field field = booking.getField();
+
+		// Gửi thông báo đẩy cập nhật realtime cho các client đang xem màn hình đặt sân
+		if (field != null && field.getId() != null) {
+			try {
+				java.util.Map<String, String> syncData = new java.util.HashMap<>();
+				syncData.put("type", "REALTIME_BOOKING_UPDATE");
+				syncData.put("fieldId", field.getId().toString());
+				if (booking.getFromTime() != null) {
+					syncData.put("date", booking.getFromTime().format(DATE_FORMATTER));
+				}
+				pushNotificationService.sendTopicDataMessage("booking_updates", syncData);
+			} catch (Exception e) {
+				System.err.println("Gửi tin nhắn realtime sync thất bại: " + e.getMessage());
+			}
+		}
 		vn.footballfield.entity.User customer = booking.getCustomer();
 		if (customer == null && booking.getCustomerId() != null) {
 			customer = userRepository.findById(booking.getCustomerId()).orElse(null);
@@ -384,7 +445,24 @@ public class BookingService {
 			System.out.println("Gửi thông báo hủy sân thất bại: " + e.getMessage());
 		}
 
-		return bookingRepository.save(booking);
+		Book savedBooking = bookingRepository.save(booking);
+
+		// Gửi thông báo đẩy cập nhật realtime cho các client để giải phóng slot
+		if (savedBooking.getField() != null && savedBooking.getField().getId() != null) {
+			try {
+				java.util.Map<String, String> syncData = new java.util.HashMap<>();
+				syncData.put("type", "REALTIME_BOOKING_UPDATE");
+				syncData.put("fieldId", savedBooking.getField().getId().toString());
+				if (savedBooking.getFromTime() != null) {
+					syncData.put("date", savedBooking.getFromTime().format(DATE_FORMATTER));
+				}
+				pushNotificationService.sendTopicDataMessage("booking_updates", syncData);
+			} catch (Exception e) {
+				System.err.println("Gửi tin nhắn realtime sync CANCEL thất bại: " + e.getMessage());
+			}
+		}
+
+		return savedBooking;
 	}
 
 
@@ -469,6 +547,21 @@ public class BookingService {
 			}
 		} catch (Exception e) {
 			System.out.println("Gửi thông báo hủy sân cho chủ sân thất bại: " + e.getMessage());
+		}
+
+		// Gửi thông báo đẩy cập nhật realtime cho các client để giải phóng slot
+		if (savedBooking.getField() != null && savedBooking.getField().getId() != null) {
+			try {
+				java.util.Map<String, String> syncData = new java.util.HashMap<>();
+				syncData.put("type", "REALTIME_BOOKING_UPDATE");
+				syncData.put("fieldId", savedBooking.getField().getId().toString());
+				if (savedBooking.getFromTime() != null) {
+					syncData.put("date", savedBooking.getFromTime().format(DATE_FORMATTER));
+				}
+				pushNotificationService.sendTopicDataMessage("booking_updates", syncData);
+			} catch (Exception e) {
+				System.err.println("Gửi tin nhắn realtime sync ADMIN CANCEL thất bại: " + e.getMessage());
+			}
 		}
 
 		return savedBooking;

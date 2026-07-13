@@ -20,6 +20,54 @@ class _FieldDetailScreenState extends State<FieldDetailScreen> {
   List<String> _galleryImages = [];
   bool _hasInitialized = false;
 
+  void _showCustomSnackBar({
+    required String message,
+    required Color iconColor,
+    required IconData icon,
+    Color? backgroundColor,
+    Duration duration = const Duration(seconds: 4),
+  }) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isModern = themeProvider.isModernMode;
+
+    final defaultBg = isModern ? const Color(0xFF1E222B) : Colors.grey[900]!;
+    final bg = backgroundColor ?? defaultBg;
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(icon, color: iconColor, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  fontFamily: 'Roboto',
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: bg,
+        duration: duration,
+        behavior: SnackBarBehavior.floating,
+        elevation: 6,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: isModern 
+              ? BorderSide(color: iconColor.withValues(alpha: 0.3), width: 1.5) 
+              : BorderSide.none,
+        ),
+      ),
+    );
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -87,12 +135,11 @@ class _FieldDetailScreenState extends State<FieldDetailScreen> {
   void bookField() {
     // Kiểm tra tình trạng sân trước khi cho phép đặt
     if (field?.available != true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Sân không sẵn sàng để đặt'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
+      _showCustomSnackBar(
+        message: 'Sân bóng hiện không sẵn sàng để đặt. Vui lòng chọn đặt sân khác hoặc liên hệ chủ sân để được hỗ trợ!',
+        iconColor: Colors.orangeAccent,
+        icon: Icons.warning_amber_rounded,
+        duration: const Duration(seconds: 5),
       );
       return;
     }
@@ -113,19 +160,20 @@ class _FieldDetailScreenState extends State<FieldDetailScreen> {
     try {
       await MapService.openDirectionsWithAddress(field!.address);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Không thể mở chỉ đường: $e'),
-          backgroundColor: Colors.red,
-        ),
+      _showCustomSnackBar(
+        message: 'Không thể mở chỉ đường: $e',
+        iconColor: Colors.redAccent,
+        icon: Icons.error_outline,
       );
     }
   }
 
   Future<void> _openChat() async {
     if (field?.owner == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không tìm thấy thông tin chủ sân'), backgroundColor: Colors.red),
+      _showCustomSnackBar(
+        message: 'Không tìm thấy thông tin chủ sân. Vui lòng chọn sân khác!',
+        iconColor: Colors.redAccent,
+        icon: Icons.error_outline,
       );
       return;
     }
@@ -133,8 +181,10 @@ class _FieldDetailScreenState extends State<FieldDetailScreen> {
     // Lấy thông tin user hiện tại
     final currentUser = await ApiService.getProfile();
     if (currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Vui lòng đăng nhập để nhắn tin'), backgroundColor: Colors.orange),
+      _showCustomSnackBar(
+        message: 'Vui lòng đăng nhập để thực hiện chức năng nhắn tin!',
+        iconColor: Colors.orangeAccent,
+        icon: Icons.info_outline,
       );
       return;
     }
@@ -169,14 +219,18 @@ class _FieldDetailScreenState extends State<FieldDetailScreen> {
           },
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Không thể tạo cuộc hội thoại'), backgroundColor: Colors.red),
+        _showCustomSnackBar(
+          message: 'Không thể khởi tạo cuộc hội thoại. Vui lòng thử lại sau!',
+          iconColor: Colors.redAccent,
+          icon: Icons.error_outline,
         );
       }
     } catch (e) {
       Navigator.pop(context); // Đóng loading
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Đã xảy ra lỗi: $e'), backgroundColor: Colors.red),
+      _showCustomSnackBar(
+        message: 'Đã xảy ra lỗi: $e',
+        iconColor: Colors.redAccent,
+        icon: Icons.error_outline,
       );
     }
   }

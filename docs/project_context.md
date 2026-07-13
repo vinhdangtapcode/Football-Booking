@@ -18,6 +18,41 @@ Dự án là một hệ thống đặt sân bóng đá toàn diện (Monorepo), 
 
 ## 2. Các thay đổi và cập nhật gần đây (Recent Changes)
 
+### 13/07/2026:
+1.  **Tái cấu trúc giao diện Đặt Sân sử dụng Provider và tích hợp FCM đồng bộ real-time**:
+    *   Cập nhật [BookingProvider.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/booking/providers/booking_provider.dart) để lưu trữ trạng thái ngày chọn, danh sách slot bận, danh sách slot đang chọn.
+    *   Tái cấu trúc [booking_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/booking/screens/booking_screen.dart) sử dụng `Consumer<BookingProvider>` để phản ứng và cập nhật giao diện mượt mà theo trạng thái trong Provider.
+    *   Bọc [booking_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/booking/screens/booking_screen.dart) trong một `ScaffoldMessenger` cục bộ và định cấu hình `GlobalKey` để hiển thị SnackBar cục bộ an toàn, đồng thời tăng thời gian hiển thị lên 6 giây.
+    *   Nâng cấp giao diện hiển thị kết quả đặt sân thành công (khi cọc = 0đ) và đặt sân thất bại/lỗi API thành dạng Dialog Custom Premium (`_showStatusDialog`) có thiết kế bo góc, viền phát sáng và hiển thị chi tiết lịch đặt tương ứng.
+    *   Đăng ký topic `"booking_updates"` trong [push_notification_service.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/services/push_notification_service.dart) ở Client để nhận tin nhắn đồng bộ real-time.
+    *   Bổ sung logic bắt tin nhắn FCM ngầm loại `REALTIME_BOOKING_UPDATE` để tự động kích hoạt tải lại slot nếu người dùng đang ở đúng màn hình đặt sân của sân bóng đó.
+    *   Thêm hàm `sendTopicDataMessage` vào [PushNotificationService.java](file:///c:/Users/Admin/IdeaProjects/football_booking/backend/src/main/java/vn/footballfield/service/PushNotificationService.java) để gửi tin nhắn silent data FCM.
+    *   Gửi tin broadcast real-time từ [BookingService.java](file:///c:/Users/Admin/IdeaProjects/football_booking/backend/src/main/java/vn/footballfield/service/BookingService.java) mỗi khi tạo mới đơn hàng ở trạng thái `PENDING_PAYMENT` (đang chờ thanh toán cọc) và khi duyệt trạng thái đơn hàng sang `APPROVED` (thanh toán thành công).
+
+
+2.  **Khắc phục lỗi tạo cuộc hội thoại tin nhắn (NullPointerException)**:
+    *   Cập nhật [ChatController.java](file:///c:/Users/Admin/IdeaProjects/football_booking/backend/src/main/java/vn/footballfield/controller/ChatController.java) để chuyển sang dùng `HashMap` thay vì `Map.of` trong phản hồi lấy/tạo cuộc hội thoại. Điều này loại bỏ hoàn toàn lỗi `NullPointerException` ném ra bởi Java khi `fieldId` là null (đối với các cuộc hội thoại cũ được khởi tạo không gắn với sân bóng cụ thể).
+    *   Cải thiện [api_service.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/services/api_service.dart) ở client để trả về thông điệp lỗi chi tiết từ server trong trường hợp gặp lỗi.
+
+3.  **Sửa lỗi khởi tạo trạng thái các nút toggle ở màn hình Sửa Sân của Chủ sân**:
+    *   Cập nhật [add_edit_field_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/owner/screens/add_edit_field_screen.dart) để gán giá trị khởi tạo chính xác cho `available` và `outdoor` từ đối tượng `field` nhận được thông qua arguments. Tránh tình trạng toggle luôn hiển thị mặc định là `on` (true) mỗi khi mở màn hình sửa.
+
+4.  **Cải tiến giao diện và nội dung SnackBar thông báo trong toàn hệ thống**:
+    *   Cập nhật [field_detail_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/field/screens/field_detail_screen.dart) và [add_edit_field_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/owner/screens/add_edit_field_screen.dart) tích hợp helper `_showCustomSnackBar` để hiển thị các thông báo dạng floating, bo tròn 16px, viền phát sáng hỗ trợ dark mode tự động.
+    *   Cập nhật thông điệp khi sân không sẵn sàng để đặt lịch sự và chi tiết hơn: *"Sân bóng hiện không sẵn sàng để đặt. Vui lòng chọn đặt sân khác hoặc liên hệ chủ sân để được hỗ trợ!"*.
+
+5.  **Cập nhật thông tin chủ sân và thêm nút copy số điện thoại trong chi tiết đặt sân**:
+    *   Bổ sung 2 trường `ownerName` và `ownerPhone` vào [BookingHistoryDTO.java](file:///c:/Users/Admin/IdeaProjects/football_booking/backend/src/main/java/vn/footballfield/dto/booking/BookingHistoryDTO.java) ở Backend và map chúng trong [BookingController.java](file:///c:/Users/Admin/IdeaProjects/football_booking/backend/src/main/java/vn/footballfield/controller/BookingController.java).
+    *   Cập nhật [booking.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/models/booking.dart) ở Client để tự động deserialize thông tin chủ sân lồng vào `Field.owner`.
+    *   Cập nhật [booking_history_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/booking/screens/booking_history_screen.dart) (màn hình Khách hàng) để chuyển từ hiển thị *"Người đặt"* thành *"Chủ sân"* và *"SĐT chủ sân"*, đồng thời tích hợp nút copy số điện thoại chủ sân.
+    *   Cập nhật [field_booking_history_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/owner/screens/field_booking_history_screen.dart) (màn hình Chủ sân) tích hợp thêm nút copy số điện thoại khách hàng.
+
+6.  **Làm đẹp SnackBar cho phần hồ sơ cá nhân và cài đặt**:
+    *   Cập nhật [profile_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/profile/screens/profile_screen.dart) (Khách hàng) và [owner_edit_profile_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/owner/screens/owner_edit_profile_screen.dart) (Chủ sân) tích hợp `_showCustomSnackBar` cho các thông báo cập nhật hồ sơ cá nhân thành công / thất bại.
+
+7.  **Thông báo chờ thanh toán cọc đến chủ sân**:
+    *   Cập nhật [BookingService.java](file:///c:/Users/Admin/IdeaProjects/football_booking/backend/src/main/java/vn/footballfield/service/BookingService.java) để gửi cả thông báo hệ thống (DB Notification) và thông báo đẩy (FCM Push Notification) đến chủ sân ngay khi khách đặt sân hoàn tất việc khởi tạo lịch chờ thanh toán cọc (`PENDING_PAYMENT`).
+
 ### 09/07/2026:
 1.  **Bỏ qua màn hình thanh toán VietQR khi tiền cọc = 0**:
     *   Cập nhật [booking_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/booking/screens/booking_screen.dart) để kiểm tra trạng thái và số tiền cọc của đặt sân mới được tạo.
@@ -36,6 +71,18 @@ Dự án là một hệ thống đặt sân bóng đá toàn diện (Monorepo), 
     *   Rà soát và dọn dẹp các biểu tượng `⚽`, `✅`, `❌` trong tất cả các thông báo hiển thị qua SnackBar (như ở [booking_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/booking/screens/booking_screen.dart), [payment_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/booking/screens/payment_screen.dart), [booking_history_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/booking/screens/booking_history_screen.dart), [add_edit_field_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/owner/screens/add_edit_field_screen.dart) và [admin_add_edit_field_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/admin/screens/admin_add_edit_field_screen.dart)) để làm giao diện hiển thị sạch hơn và chuyên nghiệp hơn.
 5.  **Làm tròn giá tiền trong các màn hình chỉnh sửa sân bóng**:
     *   Cập nhật việc khởi tạo giá trị hiển thị cho các trường `pricePerHour`, `pricePerHourPeak` (giờ cao điểm) và `depositAmount` (tiền đặt cọc) trong [add_edit_field_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/owner/screens/add_edit_field_screen.dart) và [admin_add_edit_field_screen.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/features/admin/screens/admin_add_edit_field_screen.dart) sang kiểu số nguyên bằng cách sử dụng `.toInt().toString()`, giúp loại bỏ hoàn toàn phần thập phân `.0` và định dạng giá trị hiển thị một cách gọn gàng, chuẩn xác.
+6.  **Tài liệu thiết kế tính năng phê duyệt chủ sân cho Admin**:
+    *   Tạo tài liệu kỹ thuật chi tiết tại [admin_owner_approval_design.md](file:///c:/Users/Admin/IdeaProjects/football_booking/docs/admin_owner_approval_design.md) mô tả quy trình duyệt chủ sân mới, các bước cập nhật Database, mã nguồn Backend (Spring Boot) và Frontend (Flutter) để hỗ trợ quá trình phát triển thủ công sau này.
+7.  **Sửa lỗi định tuyến chỉ số tab thông báo đẩy của Chủ sân**:
+    *   Cập nhật `ownerNotifications` thành `OwnerMainTabScaffold(initialIndex: 2)` và `ownerSettings` thành `OwnerMainTabScaffold(initialIndex: 3)` trong tệp [app_router.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/router/app_router.dart) để khớp chính xác với chỉ số danh sách màn hình của Chủ sân, đảm bảo định tuyến đúng địa chỉ khi người dùng click vào thông báo đẩy.
+8.  **Sửa lỗi gửi thông báo đẩy toàn hệ thống của Admin**:
+    *   Cập nhật hằng số `adminBroadcast` trong [api_endpoints.dart](file:///c:/Users/Admin/IdeaProjects/football_booking/frontend/lib/core/constants/api_endpoints.dart) thành `/api/admin/notifications/broadcast` để khớp chính xác với ánh xạ POST trong `AdminController.java` của Backend, sửa lỗi 404 khi Admin gửi thông báo từ hệ thống.
+9.  **Tài liệu chuẩn bị phản biện bảo vệ đồ án tốt nghiệp**:
+    *   Tạo tài liệu tổng hợp 100 câu hỏi phản biện kỹ thuật chi tiết tại [defence_questions_and_answers.md](file:///c:/Users/Admin/IdeaProjects/football_booking/docs/defence_questions_and_answers.md) dựa trên cấu trúc source code hiện tại và báo cáo đồ án, bao gồm các chủ đề: Kiến trúc, Cơ sở dữ liệu & Xử lý đồng thời, Bảo mật/Xác thực/Phân quyền, Thanh toán/Webhook, FCM/Chat thời gian thực, Thuật toán nghiệp vụ và Giao diện Flutter.
+10. **Tài liệu hướng dẫn thiết kế Slide thuyết trình**:
+    *   Tạo tài liệu hướng dẫn thiết kế slide thuyết trình chi tiết tại [slides_design_guide.md](file:///c:/Users/Admin/IdeaProjects/football_booking/docs/slides_design_guide.md) phân chia chi tiết bố cục giao diện trực quan và kịch bản thuyết trình từng slide theo mục lục được yêu cầu phục vụ cho buổi bảo vệ trước hội đồng, đặc biệt bổ sung phần nhấn mạnh nghiệp vụ và kiến trúc tính năng nhắn tin nội bộ (In-app Chat) cùng danh sách các hạn chế kỹ thuật chi tiết của đồ án (hoàn tiền cọc thủ công, lưu trữ hình ảnh trên ổ đĩa VPS, công thức Haversine thuần túy).
+11. **Tích hợp thông báo đẩy cho tin nhắn Chat nội bộ**:
+    *   Cấu hình autowire `PushNotificationService` và bổ sung logic gửi thông báo đẩy Firebase (FCM) bất đồng bộ trong phương thức `sendMessage` của [ChatService.java](file:///c:/Users/Admin/IdeaProjects/football_booking/backend/src/main/java/vn/footballfield/service/ChatService.java), giúp người nhận (Khách hàng hoặc Chủ sân) nhận được thông báo tin nhắn tức thời trên thanh trạng thái điện thoại khi đang không mở ứng dụng.
 
 ### 30/06/2026:
 1.  **Đồng bộ hóa Token bảo mật**:

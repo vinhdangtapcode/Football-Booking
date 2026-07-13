@@ -15,6 +15,9 @@ public class PaymentCleanupScheduler {
     @Autowired
     private BookingRepository bookingRepository;
 
+    @Autowired
+    private vn.footballfield.service.PushNotificationService pushNotificationService;
+
     @Scheduled(fixedDelay = 60000) // Run every 60 seconds
     public void cleanupExpiredBookings() {
         List<Book> pendingBookings = bookingRepository.findByStatus("PENDING_PAYMENT");
@@ -24,8 +27,23 @@ public class PaymentCleanupScheduler {
             if (booking.getCreatedAt() != null && booking.getCreatedAt().isBefore(limitTime)) {
                 booking.setStatus("EXPIRED");
                 booking.setTotalPrice(0.0);
-                bookingRepository.save(booking);
-                System.out.println("Booking ID " + booking.getId() + " has expired due to payment timeout.");
+                Book savedBooking = bookingRepository.save(booking);
+                System.out.println("Booking ID " + savedBooking.getId() + " has expired due to payment timeout.");
+
+                // Gửi thông báo đẩy cập nhật realtime cho các client để giải phóng slot
+                if (savedBooking.getField() != null && savedBooking.getField().getId() != null) {
+                    try {
+                        java.util.Map<String, String> syncData = new java.util.HashMap<>();
+                        syncData.put("type", "REALTIME_BOOKING_UPDATE");
+                        syncData.put("fieldId", savedBooking.getField().getId().toString());
+                        if (savedBooking.getFromTime() != null) {
+                            syncData.put("date", savedBooking.getFromTime().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+                        }
+                        pushNotificationService.sendTopicDataMessage("booking_updates", syncData);
+                    } catch (Exception e) {
+                        System.err.println("Gửi tin nhắn realtime sync EXPIRED thất bại: " + e.getMessage());
+                    }
+                }
             }
         }
     }

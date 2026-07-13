@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui';
@@ -391,32 +392,72 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
                 Navigator.pop(parentContext); // Đóng booking detail dialog
                 
                 // Show loading indicator
-                ScaffoldMessenger.of(parentContext).showSnackBar(
-                  SnackBar(content: Row(
-                    children: [
-                      const CircularProgressIndicator(strokeWidth: 2),
-                      const SizedBox(width: 15),
-                      const Text("Đang xử lý hủy sân..."),
-                    ],
-                  )),
+                ScaffoldMessenger.of(this.context).showSnackBar(
+                  SnackBar(
+                    content: const Row(
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        ),
+                        SizedBox(width: 15),
+                        Text("Đang xử lý hủy sân...", style: TextStyle(fontFamily: 'Roboto', fontSize: 13.5)),
+                      ],
+                    ),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
                 );
 
                 final success = await context.read<BookingProvider>().cancelBooking(booking.id!);
-                ScaffoldMessenger.of(parentContext).hideCurrentSnackBar();
+                ScaffoldMessenger.of(this.context).hideCurrentSnackBar();
 
                 if (success) {
-                  ScaffoldMessenger.of(parentContext).showSnackBar(
-                    const SnackBar(
-                      content: Text("Hủy đặt sân thành công! Khung giờ đã được giải phóng."),
-                      backgroundColor: Colors.green,
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    SnackBar(
+                      content: const Row(
+                        children: [
+                          Icon(Icons.check_circle_outline, color: Colors.greenAccent, size: 20),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              "Hủy đặt sân thành công! Khung giờ đã được giải phóng.",
+                              style: TextStyle(fontFamily: 'Roboto', fontSize: 13.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                      backgroundColor: const Color(0xFF1E222B),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: Colors.greenAccent.withValues(alpha: 0.3), width: 1.5),
+                      ),
                     ),
                   );
                   fetchBookingHistory(); // Reload history list
                 } else {
-                  ScaffoldMessenger.of(parentContext).showSnackBar(
-                    const SnackBar(
-                      content: Text("Hủy đặt sân thất bại. Vui lòng thử lại."),
-                      backgroundColor: Colors.red,
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    SnackBar(
+                      content: const Row(
+                        children: [
+                          Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              "Hủy đặt sân thất bại. Vui lòng thử lại.",
+                              style: TextStyle(fontFamily: 'Roboto', fontSize: 13.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                      backgroundColor: const Color(0xFF1E222B),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.3), width: 1.5),
+                      ),
                     ),
                   );
                 }
@@ -597,19 +638,44 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
                       const SizedBox(height: 10),
                       _buildPopupRow(
                         icon: Icons.person_outline,
-                        label: 'Người đặt',
-                        value: booking.customerName ?? booking.customer?.name ?? '-',
+                        label: 'Chủ sân',
+                        value: booking.field.owner?.ownerName ?? '-',
                         isModern: isModern,
                         themeProvider: themeProvider,
                       ),
-                      if (booking.customerPhone != null && booking.customerPhone!.isNotEmpty) ...[
+                      if (booking.field.owner?.contactNumber != null && booking.field.owner!.contactNumber.isNotEmpty) ...[
                         const SizedBox(height: 10),
                         _buildPopupRow(
                           icon: Icons.phone_android,
-                          label: 'Số điện thoại',
-                          value: booking.customerPhone!,
+                          label: 'SĐT chủ sân',
+                          value: booking.field.owner!.contactNumber,
                           isModern: isModern,
                           themeProvider: themeProvider,
+                          trailing: GestureDetector(
+                            onTap: () {
+                              Clipboard.setData(ClipboardData(text: booking.field.owner!.contactNumber));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Row(
+                                    children: [
+                                      const Icon(Icons.check_circle_outline, color: Colors.greenAccent, size: 20),
+                                      const SizedBox(width: 12),
+                                      const Text("Đã sao chép số điện thoại!", style: TextStyle(fontFamily: 'Roboto', fontSize: 13.5)),
+                                    ],
+                                  ),
+                                  backgroundColor: const Color(0xFF1E222B),
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                            child: Icon(
+                              Icons.copy_rounded,
+                              size: 16,
+                              color: isModern ? themeProvider.accentColor : Colors.amber.shade800,
+                            ),
+                          ),
                         ),
                       ],
                       const SizedBox(height: 10),
@@ -865,6 +931,7 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
     required String value,
     required bool isModern,
     required ThemeProvider themeProvider,
+    Widget? trailing,
   }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -891,6 +958,10 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
             ),
           ),
         ),
+        if (trailing != null) ...[
+          const SizedBox(width: 8),
+          trailing,
+        ],
       ],
     );
   }

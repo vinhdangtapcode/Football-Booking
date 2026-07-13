@@ -5,6 +5,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
+import 'package:provider/provider.dart';
+import '../features/booking/providers/booking_provider.dart';
 
 /// Service for handling Firebase Cloud Messaging (Push Notifications)
 class PushNotificationService {
@@ -27,6 +29,14 @@ class PushNotificationService {
 
     // Get FCM token and send to backend
     await _setupToken();
+
+    // Subscribe to booking updates topic for real-time slot sync
+    try {
+      await _firebaseMessaging.subscribeToTopic("booking_updates");
+      print("Subscribed to booking_updates topic successfully");
+    } catch (e) {
+      print("Failed to subscribe to booking_updates topic: $e");
+    }
 
     // Handle foreground messages
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
@@ -163,6 +173,26 @@ class PushNotificationService {
   /// Handle foreground message
   static void _handleForegroundMessage(RemoteMessage message) {
     print('Received foreground message: ${message.notification?.title}');
+    print('Message data: ${message.data}');
+
+    // Kiểm tra tin nhắn cập nhật realtime đặt sân
+    if (message.data['type'] == 'REALTIME_BOOKING_UPDATE') {
+      final int? fieldId = int.tryParse(message.data['fieldId'] ?? '');
+      print('Realtime booking update for fieldId: $fieldId');
+      if (fieldId != null && navigatorKey?.currentContext != null) {
+        try {
+          final context = navigatorKey!.currentContext!;
+          final bookingProvider = Provider.of<BookingProvider>(context, listen: false);
+          if (bookingProvider.currentViewingFieldId == fieldId) {
+            print('Current user is viewing this field. Refreshing slots...');
+            bookingProvider.fetchBookedTimes(fieldId);
+          }
+        } catch (e) {
+          print("Error processing realtime booking update FCM: $e");
+        }
+      }
+      return; // Không hiển thị notification popup cho loại message ngầm này
+    }
 
     RemoteNotification? notification = message.notification;
     AndroidNotification? android = message.notification?.android;

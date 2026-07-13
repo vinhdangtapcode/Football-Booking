@@ -36,11 +36,13 @@ public class ChatController {
 
             Conversation conversation = chatService.getOrCreateConversation(userId, ownerId, fieldId);
 
-            return ResponseEntity.ok(Map.of(
-                    "id", conversation.getId(),
-                    "userId", conversation.getUser().getId(),
-                    "ownerId", conversation.getOwner().getId(),
-                    "fieldId", conversation.getField() != null ? conversation.getField().getId() : null));
+            java.util.Map<String, Object> responseData = new java.util.HashMap<>();
+            responseData.put("id", conversation.getId());
+            responseData.put("userId", conversation.getUser().getId());
+            responseData.put("ownerId", conversation.getOwner().getId());
+            responseData.put("fieldId", conversation.getField() != null ? conversation.getField().getId() : null);
+
+            return ResponseEntity.ok(responseData);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

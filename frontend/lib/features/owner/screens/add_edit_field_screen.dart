@@ -44,6 +44,54 @@ class _AddEditFieldScreenState extends State<AddEditFieldScreen> {
   String _imageStatusText = 'Đang xử lý...';
   final ImagePicker _picker = ImagePicker();
 
+  void _showCustomSnackBar({
+    required String message,
+    required Color iconColor,
+    required IconData icon,
+    Color? backgroundColor,
+    Duration duration = const Duration(seconds: 4),
+  }) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isModern = themeProvider.isModernMode;
+
+    final defaultBg = isModern ? const Color(0xFF1E222B) : Colors.grey[900]!;
+    final bg = backgroundColor ?? defaultBg;
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(icon, color: iconColor, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  fontFamily: 'Roboto',
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: bg,
+        duration: duration,
+        behavior: SnackBarBehavior.floating,
+        elevation: 6,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: isModern 
+              ? BorderSide(color: iconColor.withValues(alpha: 0.3), width: 1.5) 
+              : BorderSide.none,
+        ),
+      ),
+    );
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -81,6 +129,8 @@ class _AddEditFieldScreenState extends State<AddEditFieldScreen> {
         if (field!.latitude != null && field!.longitude != null) {
           selectedLocation = LatLng(field!.latitude!, field!.longitude!);
         }
+        available = field!.available ?? true;
+        outdoor = field!.outdoor ?? true;
         if (field!.id != null) {
           _loadExistingImages();
         }
@@ -104,8 +154,10 @@ class _AddEditFieldScreenState extends State<AddEditFieldScreen> {
   Future<void> _pickImages() async {
     final totalImages = _existingImages.length + _newImages.length;
     if (totalImages >= 5) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Tối đa 5 ảnh!'), backgroundColor: Colors.orange),
+      _showCustomSnackBar(
+        message: 'Tối đa 5 ảnh sân bóng!',
+        iconColor: Colors.orangeAccent,
+        icon: Icons.warning_amber_rounded,
       );
       return;
     }
@@ -195,7 +247,11 @@ class _AddEditFieldScreenState extends State<AddEditFieldScreen> {
     bool success = await ApiService.deleteFieldImage(imageId);
     if (success) {
       await _loadExistingImages();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Đã xóa ảnh'), backgroundColor: Colors.green));
+      _showCustomSnackBar(
+        message: 'Đã xóa ảnh thành công!',
+        iconColor: Colors.greenAccent,
+        icon: Icons.check_circle_outline,
+      );
     }
   }
 
@@ -236,7 +292,11 @@ class _AddEditFieldScreenState extends State<AddEditFieldScreen> {
                             bool success = await ApiService.setPrimaryImage(img['id']);
                             if (success) {
                               await _loadExistingImages();
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Đã chọn làm ảnh đại diện'), backgroundColor: Colors.green));
+                              _showCustomSnackBar(
+                                message: 'Đã thiết lập làm ảnh đại diện thành công!',
+                                iconColor: Colors.greenAccent,
+                                icon: Icons.star_border_rounded,
+                              );
                             }
                           },
                           child: CachedNetworkImage(
@@ -353,10 +413,18 @@ class _AddEditFieldScreenState extends State<AddEditFieldScreen> {
             await ApiService.uploadFieldImages(createdField.id!, _newImages);
             setState(() { _isUploadingImages = false; });
           }
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Tạo sân thành công!'), backgroundColor: Colors.green));
+          _showCustomSnackBar(
+            message: 'Tạo sân bóng mới thành công!',
+            iconColor: Colors.greenAccent,
+            icon: Icons.check_circle_outline,
+          );
           Navigator.pop(context);
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Tạo sân thất bại")));
+          _showCustomSnackBar(
+            message: 'Tạo sân bóng mới thất bại. Vui lòng kiểm tra lại thông tin!',
+            iconColor: Colors.redAccent,
+            icon: Icons.error_outline,
+          );
         }
       } else {
         bool success = await ApiService.updateField(newField);
@@ -369,10 +437,18 @@ class _AddEditFieldScreenState extends State<AddEditFieldScreen> {
             await ApiService.uploadFieldImages(field!.id!, _newImages);
             setState(() { _isUploadingImages = false; });
           }
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cập nhật sân thành công!'), backgroundColor: Colors.green));
+          _showCustomSnackBar(
+            message: 'Cập nhật thông tin sân bóng thành công!',
+            iconColor: Colors.greenAccent,
+            icon: Icons.check_circle_outline,
+          );
           Navigator.pop(context);
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Cập nhật sân thất bại")));
+          _showCustomSnackBar(
+            message: 'Cập nhật thông tin sân bóng thất bại!',
+            iconColor: Colors.redAccent,
+            icon: Icons.error_outline,
+          );
         }
       }
       setState(() { isLoading = false; });
@@ -395,17 +471,19 @@ class _AddEditFieldScreenState extends State<AddEditFieldScreen> {
         });
         await Future.delayed(Duration(milliseconds: 100));
         setState(() {});
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('✅ Đã chọn vị trí thành công!'),
-            Text('📍 ${addressController.text}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w300)),
-          ]),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-        ));
+        _showCustomSnackBar(
+          message: 'Đã xác định vị trí thành công!\n📍 ${addressController.text}',
+          iconColor: Colors.greenAccent,
+          icon: Icons.my_location_rounded,
+          duration: const Duration(seconds: 4),
+        );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi khi mở bản đồ: $e'), backgroundColor: Colors.red, duration: Duration(seconds: 3)));
+      _showCustomSnackBar(
+        message: 'Lỗi khởi chạy bản đồ: $e',
+        iconColor: Colors.redAccent,
+        icon: Icons.map_outlined,
+      );
     }
   }
 

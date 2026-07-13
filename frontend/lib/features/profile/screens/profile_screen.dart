@@ -51,6 +51,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Navigator.pushReplacementNamed(context, '/login');
   }
 
+  void _showCustomSnackBar({
+    required String message,
+    required Color iconColor,
+    required IconData icon,
+    Color? backgroundColor,
+    Duration duration = const Duration(seconds: 4),
+  }) {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final isModern = themeProvider.isModernMode;
+
+    final defaultBg = isModern ? const Color(0xFF1E222B) : Colors.grey[900]!;
+    final bg = backgroundColor ?? defaultBg;
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(icon, color: iconColor, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  fontFamily: 'Roboto',
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: bg,
+        duration: duration,
+        behavior: SnackBarBehavior.floating,
+        elevation: 6,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: isModern 
+              ? BorderSide(color: iconColor.withValues(alpha: 0.3), width: 1.5) 
+              : BorderSide.none,
+        ),
+      ),
+    );
+  }
+
   Future<void> saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() { isLoading = true; });
@@ -67,12 +115,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         user = authProvider.currentUser;
         isEditing = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cập nhật thành công!'), backgroundColor: Colors.green),
+      _showCustomSnackBar(
+        message: 'Cập nhật thành công!',
+        iconColor: Colors.greenAccent,
+        icon: Icons.check_circle_outline,
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cập nhật thất bại!'), backgroundColor: Colors.red),
+      _showCustomSnackBar(
+        message: 'Cập nhật thất bại!',
+        iconColor: Colors.redAccent,
+        icon: Icons.error_outline,
       );
     }
     setState(() { isLoading = false; });

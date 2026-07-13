@@ -650,11 +650,18 @@ class ApiService {
       );
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else {
+        try {
+          final errorBody = jsonDecode(response.body);
+          throw Exception(errorBody['error'] ?? 'Lỗi server: ${response.statusCode}');
+        } catch (jsonException) {
+          throw Exception('Lỗi server: ${response.statusCode} - ${response.body}');
+        }
       }
     } catch (e) {
       print('Error creating conversation: $e');
+      rethrow;
     }
-    return null;
   }
 
   // Lấy danh sách cuộc hội thoại của user: GET /api/chat/conversations/user/{userId}

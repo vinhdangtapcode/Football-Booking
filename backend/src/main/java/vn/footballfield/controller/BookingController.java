@@ -53,7 +53,9 @@ public class BookingController {
 					b.getStatus(),
 					b.getTotalPrice(),
 					b.getPaymentUrl(),
-					b.getField() != null ? b.getField().getImageUrl() : null
+					b.getField() != null ? b.getField().getImageUrl() : null,
+					(b.getField() != null && b.getField().getOwner() != null) ? b.getField().getOwner().getOwnerName() : null,
+					(b.getField() != null && b.getField().getOwner() != null) ? b.getField().getOwner().getContactNumber() : null
 				))
 				.map(dto -> new ResponseEntity<>(dto, HttpStatus.OK))
 				.orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
@@ -78,7 +80,9 @@ public class BookingController {
 				b.getStatus(),
 				b.getTotalPrice(),
 				b.getPaymentUrl(),
-				b.getField() != null ? b.getField().getImageUrl() : null
+				b.getField() != null ? b.getField().getImageUrl() : null,
+				(b.getField() != null && b.getField().getOwner() != null) ? b.getField().getOwner().getOwnerName() : null,
+				(b.getField() != null && b.getField().getOwner() != null) ? b.getField().getOwner().getContactNumber() : null
 			))
 			.toList();
 		return new ResponseEntity<>(result, HttpStatus.OK);
